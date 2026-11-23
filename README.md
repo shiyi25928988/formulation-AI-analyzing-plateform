@@ -25,7 +25,7 @@
 
 | 文档 | 内容 |
 |---|---|
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构总纲 v2.1。§1–§14：约束与质量属性、分层与三条主线、领域模型、服务契约、AI 工程化、闭环状态机、安全矩阵、部署与 SLO、18 条 ADR、路线与验收；§15–§18：运行期视图与时序、FMEA 与静默失败、离线回放验证、开发视图与演进治理 |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构总纲 v2.1。§1–§14：约束与质量属性、分层与三条主线、领域模型、服务契约、AI 工程化、闭环状态机、安全矩阵、部署与 SLO、19 条 ADR、路线与验收；§15–§18：运行期视图与时序、FMEA 与静默失败、离线回放验证、开发视图与演进治理 |
 | [`docs/architecture/ITERATION_BACKLOG.md`](docs/architecture/ITERATION_BACKLOG.md) | 迭代原则、完成定义、按优先级排序的 14 项待办、迭代记录与下一轮目标 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 
