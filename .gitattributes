@@ -1,0 +1,38 @@
+# 统一换行，避免 Windows 下 LF/CRLF 转换污染文档与迁移脚本
+* text=auto eol=lf
+
+# 文本类显式声明
+*.md            text eol=lf
+*.txt           text eol=lf
+*.py            text eol=lf
+*.sql           text eol=lf
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.vue           text eol=lf
+*.js            text eol=lf
+*.json          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.toml          text eol=lf
+*.ini           text eol=lf
+*.cfg           text eol=lf
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# 二进制与数据产物（仅声明类型；入库规则由 .gitignore 决定）
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.xlsx          binary
+*.xls           binary
+*.parquet       binary
+*.pt            binary
+*.pth           binary
+*.pkl           binary
+*.onnx          binary
+*.safetensors   binary
