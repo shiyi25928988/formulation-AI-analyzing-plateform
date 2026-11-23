@@ -34,10 +34,10 @@
 | 架构视图不完整 | 只有逻辑视图 + 部署视图 | 补齐 4+1 视图矩阵、开发视图、进程视图、场景时序 | §15、§18.1 |
 | 运行时行为未定义 | 只写「同步/异步」 | 进程与队列模型、超时预算、三条关键链路时序与失败点 | §15.2–§15.4 |
 | 只防「服务宕机」，未防「算错了」 | 监控以可用性为主 | FMEA、AI 静默失败专节、语义断言与金丝雀配方集、降级分级 | §16 |
-| 事件溯源停留在原则 | 一句「最终一致」 | 事件目录、投递语义、幂等键、对账算法、强弱一致边界 | §16.4–§16.5 |
+| 事件溯源停留在原则 | 仅原则性描述 | 事件目录、投递语义、幂等键、对账算法、强弱一致边界 | §16.4–§16.5 |
 | 「闭环有效」无法低成本证明 | 只有在线验收指标 | 离线回放方法、golden set、故障注入、上线检查单 | §17 |
 | 架构会随迭代腐化 | 无防护 | 代码依赖方向、walking skeleton、RLS 落地、迁移与气隙回滚、fitness function、RACI | §18 |
-| 决策记录偏少 | 12 条 ADR | 追加 6 条（RLS、事件目录、拒答、离线回放、迁移策略、迭代节奏） | §10 |
+| 决策记录偏少 | 12 条 ADR | 追加 6 条（解释可降级、静默失败防护、RLS 与离线链路、事件契约、离线回放、迁移与回滚） | §10 |
 
 > v2.1 不改变 v2.0 的任何架构立场（质量属性排序、小样本选型、私有化优先、MVP 范围均不变），只补齐「系统真正跑起来之后」的设计。原有 §1–§14 编号与交叉引用保持不变，新增内容统一置于 §15–§18。
 
@@ -121,7 +121,7 @@
 ├── 应用区（K8s 通用节点池）
 │   ├── 前端静态资源 + BFF
 │   ├── L2 应用服务（HPA，无状态）
-│   ├── 在线推理服务（CPU 为主，树模型 < 100ms）
+│   ├── 在线推理服务（CPU 为主，树模型批推理 < 200ms）
 │   └── 异步 Worker（Celery：特征计算、批量预测、训练触发）
 ├── AI 区（GPU 节点池，带污点/容忍，按需启停）
 │   ├── GNN 训练 / 生成模型训练
@@ -156,7 +156,7 @@ Formula（配方，聚合根）
    ├── ProcessCondition（混胶温度、固化温度/时间/压力、后固化、涂布厚度…）
    └── 1:N ──► Experiment（实验任务、DoE 批次、执行人、设备）
                     └── 1:N ──► TestResult（原始曲线 + 提取指标 + 测试标准）
-                                     └── 关联 PerformanceMetric 定义
+                                     └── 关联 metric_definition 定义
 Model / FeatureSet / DatasetSnapshot：通过 DataLineage 与上述实体关联
 ```
 
@@ -166,16 +166,20 @@ Model / FeatureSet / DatasetSnapshot：通过 DataLineage 与上述实体关联
 |---|---|---|
 | `formula` | `id, tenant_id, project_id, code, current_version_id, confidentiality_level, created_by` | 配方与版本分离；`current_version_id` 只作指针，历史不可变 |
 | `formula_version` | `id, formula_id, version_no, parent_id, change_reason, approval_status, snapshot_json` | 追加写（append-only），`snapshot_json` 固化当次完整配方，避免 JOIN 还原出错 |
-| `formula_component` | `version_id, material_id, batch_id, mass_part, role, equivalent_ratio` | `mass_part` 用 ph r/质量份并以 `DECIMAL` 存储，禁用浮点避免配比漂移 |
+| `formula_component` | `version_id, material_id, batch_id, mass_part, role, equivalent_ratio` | `mass_part` 用 phr/质量份并以 `DECIMAL` 存储，禁用浮点避免配比漂移 |
 | `process_condition` | `version_id, step_seq, param_key, value, unit, normalized_value` | 键值 + 量纲归一；`normalized_value` 由单位换算服务写入，供特征层直接消费 |
 | `material` | `id, cas_no, smiles, supplier, func_group, functionality, density, price, availability` | SMILES/CAS 用于分子描述符；`availability` 与 `price` 供约束检查 |
+| `material_batch` | `id, material_id, supplier, lot_no, coa_ref, received_at, expiry, props_json` | 批次物性是 point-in-time 特征的来源；禁止用最新批次回填历史配方（§17.2 标签泄漏陷阱） |
 | `experiment` | `id, batch_id, formula_version_id, doe_design_id, state, planned_at, finished_at, operator_id` | `state` 为显式状态机（见 §6.1） |
 | `test_result` | `id, experiment_id, metric_id, raw_ref(MinIO), value, unit, test_standard, fidelity, qc_flag` | `fidelity` 标记实验/仿真/文献三档；`qc_flag` 决定是否可入训练集 |
 | `metric_definition` | `code, name, unit, direction(higher_better/lower_better/target), acceptable_range` | 优化目标的方向与区间必须由业务在此定义，禁止硬编码在模型代码里 |
 | `feature_set` | `id, version, definition_hash, generator_version, created_at` | `definition_hash` 保证特征定义可复现 |
 | `model_registry` | `id, model_type, version, feature_set_id, dataset_snapshot_id, metrics_json, stage` | 模型与特征版本、数据快照强制三元组绑定 |
+| `recommendation` | `id, batch_id, candidates_json, scores_json, model_version, constraint_set_version, input_snapshot_id, state, decided_by, decided_at` | 推荐/采纳/拒绝/取消结构化留存，是采纳率指标与约束库修正的依据（§6.1、§15.3、§18.5） |
 | `lineage_edge` | `src_type, src_id, dst_type, dst_id, relation` | 支撑「该预测用了哪些配方/哪版模型」的反向追溯 |
 | `audit_event` | `id, actor, tenant, action, object_ref, before_hash, after_hash, ts` | 只追加、分区存储、不可篡改（可选追加哈希链） |
+
+> 另有 `doe_design`、`quality_rule`、`prediction_log`、`constraint_set` 等支撑表，随 B01 的 DDL 一并给出。
 
 ### 3.3 化工领域约束（质量规则引擎）
 
@@ -184,7 +188,7 @@ Model / FeatureSet / DatasetSnapshot：通过 DataLineage 与上述实体关联
 | 级别 | 规则示例 | 处理 |
 |---|---|---|
 | 阻断 | 配比总和 ≠ 100%（或 phr 基准不一致）；负值与空值；单位缺失；同一配方同批次重复录入 | 拒绝导入，生成 QC 报告 |
-| 阻断 | 当量比/官能团比超出化学合理区间；固化剂与树脂官能度不匹配；固化温度低于体系最低成膜温度 | 拒绝，提示规则编号 |
+| 阻断 | 当量比/官能团比超出化学合理区间；固化剂与树脂官能度不匹配；固化制度低于体系反应所需温度窗口（如固化剂活化/分解温度） | 拒绝，提示规则编号 |
 | 告警 | 组分物性缺失、批次 COA 过期、测试标准与项目基线不一致、指标超出历史 3σ | 允许入库但打 `qc_flag`，训练时降权或排除 |
 | 提示 | 命名不规范、备注含自由文本疑似关键信息、同一文献多版本 | 进入人工复核队列 |
 
@@ -372,7 +376,7 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 
 ### 6.4 闭环有效性的度量
 
-不看「模型 RMSE 又降了多少」，而看：达到目标性能所需**实验轮次下降比例**、单位周期**命中配方数**、**推荐采纳率**、**从目标下达到候选确认的时长**。这四项才是客户能感知的价值，也是 §13 验收指标的依据。
+不看「模型 RMSE 又降了多少」，而看：达到目标性能所需**实验轮次下降比例**、单位周期**命中配方数**、**推荐采纳率**、**从目标下达到候选确认的时长**。这四项才是客户能感知的价值，也是 §12 验收指标的依据。
 
 ---
 
@@ -593,7 +597,7 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 | 组件 | 进程模型 | 并发与隔离约束 | 失败语义 |
 |---|---|---|---|
 | 网关 / BFF | 无状态多副本，异步 IO | 按租户限流，批量任务单独配额 | 快速失败并返回明确错误码 |
-| `prediction-svc` | 无状态，CPU 密集 | 特征计算走进程池，禁止在事件循环内执行；与在线推理解耦 | 部分响应（见 §15.3） |
+| `prediction-svc` | 无状态，CPU 密集 | 特征计算走进程池，禁止在事件循环内执行；服务内特征计算与推理解耦 | 部分响应（见 §15.3） |
 | 在线推理服务 | 模型常驻内存 | 按 `model_version` 双缓冲加载，切版本不留空窗 | 校验失败则就绪探针不通过 |
 | 异步 Worker | Celery 独立队列 | `feature` / `batch` / `train` / `export` 四队列隔离，防止训练饿死交互任务 | 幂等重试 + 死信队列 |
 | 训练 Job | K8s Job，GPU 节点池 | 可抢占、设 TTL、支持断点续训 | 保留中间产物，绝不自动发布 |
@@ -739,7 +743,7 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 | `DatasetSnapshotFrozen` | data-hub-svc | 训练编排 | 至少一次 + 幂等 |
 | `ModelTrained` / `ModelPromoted` | model-lifecycle-svc | 在线推理、审计、通知 | 至少一次 + 幂等 |
 | `DriftDetected` | 监控 | 训练编排、告警 | 至少一次，允许重复 |
-| `ExportRequested` | BFF | 审批、脱敏、审计 | 恰好一次语义（幂等 + 审批状态机） |
+| `ExportRequested` | BFF | 审批、脱敏、审计 | 有效恰好一次（幂等键 + 审批状态机实现） |
 
 **幂等键规范**：`(tenant_id, event_type, aggregate_id, aggregate_version)`；消费者维护已处理键表，重复投递直接返回上次结果。**重试规范**：仅幂等操作可重试，指数退避 + 抖动，最大 5 次后入死信队列；死信必须可人工重放。**对账**：每日比对事件流与投影状态（实验数、快照数、模型版本数、审计条数），差异写入告警并生成对账报告，不允许人工直接改库消除差异。事件 schema 升版本时消费者需兼容至少两个版本。
 
@@ -871,7 +875,7 @@ tests/
 
 默认方案落地要点：所有业务表带 `tenant_id / project_id`，启用 PostgreSQL **Row-Level Security**，策略由会话变量（`SET LOCAL app.tenant_id`）驱动，而非依赖应用层手写 `WHERE`；连接池每次借出必须重置会话变量，防止串租户。
 
-> **容易被漏掉的一处**：离线训练与批量导出同样必须走 RLS 上下文。只在水线链路上做 ABAC、训练脚本用高权限账号直读全库，会让 §8.2「禁止跨密级训练」在离线链路被完全绕过。训练任务应使用专用低权限角色，并把可见数据范围写入快照元数据以便审计。
+> **容易被漏掉的一处**：离线训练与批量导出同样必须走 RLS 上下文。只在在线链路上做 ABAC、训练脚本用高权限账号直读全库，会让 §8.2「禁止跨密级训练」在离线链路被完全绕过。训练任务应使用专用低权限角色，并把可见数据范围写入快照元数据以便审计。
 
 ### 18.4 Schema 演进、气隙升级与三层回滚
 
@@ -922,6 +926,7 @@ tests/
 | 多保真度 | 实验、仿真、文献三类不同可信度数据的分层建模 |
 | OOD | Out-of-Distribution，超出训练分布的样本 |
 | conformal prediction | 分布无关的不确定性校准方法，给出有覆盖率保证的预测区间 |
+| training-serving skew | 训练与推理所用特征不一致导致的线上偏差，特征单一来源（ADR-04）防的就是它 |
 | Pareto 前沿 | 多目标冲突下无法再单方面改进的解集合 |
 | 主动学习 | 按信息价值选择下一批实验点，以最少实验降低模型不确定性 |
 | 信任域 BO / TuRBO | 适合中高维空间的贝叶斯优化变体 |
