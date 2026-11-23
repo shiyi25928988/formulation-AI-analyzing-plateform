@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AdheFormAI 原型 v0.1 · 一期 MVP</title>
+<style>
+/* ============ 设计令牌 Design Tokens ============ */
+:root{
+  /* 颜色 */
+  --c-primary:#4f5ff0; --c-primary-hover:#3d4dd9; --c-primary-bg:#eef1ff; --c-primary-border:#b9c1fa;
+  --c-text:#1a1f27; --c-text-sub:#565e6b; --c-text-faint:#8a92a0;
+  --c-border:#e2e5ea; --c-bg:#f5f6f8; --c-card:#ffffff;
+  --c-success:#2e9e63; --c-success-bg:#e9f6ef;
+  --c-warn:#b97f16;    --c-warn-bg:#fdf4e3;
+  --c-danger:#cf5b52;  --c-danger-bg:#fbeeed;
+  --c-locked:#a7adb8;  --c-locked-bg:#eceef1;
+  /* 字号 */
+  --f-title:20px; --f-h2:15px; --f-body:13px; --f-small:12px; --f-tiny:11px;
+  /* 间距（4 的倍数） */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px; --s-6:32px;
+  --radius:8px; --radius-sm:5px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:var(--c-bg);color:var(--c-text);font-size:var(--f-body);}
+button{font-family:inherit;cursor:pointer;}
+
+/* ============ 原型外壳（非产品 UI） ============ */
+.proto-bar{display:flex;align-items:center;gap:var(--s-4);background:#1a1f27;color:#fff;padding:10px 24px;position:sticky;top:0;z-index:50;}
+.proto-bar b{font-size:14px;}
+.proto-bar .ver{background:#333b47;border-radius:10px;padding:2px 10px;font-size:11px;color:#c3cad4;}
+.proto-bar .spacer{flex:1;}
+.proto-bar .tip{font-size:11px;color:#9aa3b0;}
+
+/* ============ 应用外壳 AppShell ============ */
+.app{display:flex;height:calc(100vh - 44px);min-height:760px;}
+/* 侧边导航 */
+.nav{width:212px;background:var(--c-card);border-right:1px solid var(--c-border);padding:var(--s-4) var(--s-3);flex-shrink:0;display:flex;flex-direction:column;gap:2px;}
+.logo{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-2) var(--s-3) var(--s-5);}
+.logo .mark{width:28px;height:28px;border-radius:7px;background:var(--c-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+.logo .name{font-size:15px;font-weight:700;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);color:var(--c-text-sub);font-size:13px;border:none;background:none;width:100%;text-align:left;}
+.nav-item .ico{width:16px;text-align:center;}
+.nav-item.active{background:var(--c-primary-bg);color:var(--c-primary);font-weight:600;}
+.nav-item.locked{color:var(--c-locked);}
+.nav-item .tag{margin-left:auto;font-size:10px;background:var(--c-locked-bg);color:var(--c-locked);border-radius:8px;padding:1px 7px;}
+.nav-foot{margin-top:auto;padding:var(--s-3);border-top:1px solid var(--c-border);font-size:11px;color:var(--c-text-faint);line-height:1.7;}
+/* 主区 */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:52px;background:var(--c-card);border-bottom:1px solid var(--c-border);display:flex;align-items:center;gap:var(--s-4);padding:0 var(--s-5);flex-shrink:0;}
+.crumb{font-size:13px;color:var(--c-text-sub);}
+.crumb b{color:var(--c-text);}
+.topbar .spacer{flex:1;}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;border-radius:20px;padding:3px 10px;border:1px solid;}
+.pill.secret{background:#fdf4e3;border-color:#eccf8e;color:var(--c-warn);}
+.pill.ok{background:var(--c-success-bg);border-color:#a8dcc0;color:var(--c-success);}
+.pill.warn{background:var(--c-warn-bg);border-color:#eccf8e;color:var(--c-warn);}
+.pill.danger{background:var(--c-danger-bg);border-color:#f0b9b4;color:var(--c-danger);}
+.pill.lock{background:var(--c-locked-bg);border-color:#d4d8de;color:var(--c-locked);}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--c-primary-bg);color:var(--c-primary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+.content{flex:1;overflow:auto;padding:var(--s-5);position:relative;}
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ============ 通用组件 ============ */
+.card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--radius);}
+.card .card-h{display:flex;align-items:center;gap:var(--s-2);padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:13px;font-weight:600;}
+.card .card-h .hint{font-weight:400;font-size:11px;color:var(--c-text-faint);margin-left:auto;}
+.card .card-b{padding:var(--s-4);}
+.grid{display:grid;gap:var(--s-4);}
+.btn{border:1px solid var(--c-border);background:var(--c-card);border-radius:var(--radius-sm);padding:7px 14px;font-size:12px;color:var(--c-text-sub);}
+.btn.primary{background:var(--c-primary);border-color:var(--c-primary);color:#fff;font-weight:500;}
+.btn.primary:hover{background:var(--c-primary-hover);}
+.btn:disabled{background:var(--c-locked-bg);color:var(--c-locked);cursor:not-allowed;border-color:var(--c-locked-bg);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;color:var(--c-text-faint);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--c-border);white-space:nowrap;}
+td{padding:9px 10px;border-bottom:1px solid #f0f2f5;}
+input[type=text],select{border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-family:inherit;color:var(--c-text);background:var(--c-card);width:100%;}
+input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:var(--c-primary);}
+
+/* ============ S1 配方工作台 ============ */
+.wb-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:var(--s-4);align-items:start;}
+.role-chip{display:inline-block;font-size:10px;border-radius:4px;padding:1px 6px;background:var(--c-primary-bg);color:var(--c-primary);}
+.metric-row{display:flex;align-items:center;gap:var(--s-3);padding:10px 0;border-bottom:1px solid #f0f2f5;}
+.metric-row:last-child{border-bottom:none;}
+.metric-name{width:92px;font-size:12px;font-weight:500;}
+.metric-val{width:118px;font-variant-numeric:tabular-nums;}
+.metric-val b{font-size:15px;}
+.metric-val .unit{font-size:10px;color:var(--c-text-faint);}
+.metric-val .pm{font-size:10px;color:var(--c-text-faint);}
+.ubar{flex:1;height:14px;border-radius:7px;background:var(--c-bg);position:relative;overflow:visible;}
+.ubar .track{position:absolute;top:3px;height:8px;border-radius:4px;background:var(--c-primary-border);}
+.ubar .dot{position:absolute;top:2px;width:10px;height:10px;border-radius:50%;background:var(--c-primary);transform:translateX(-50%);}
+.ubar .target{position:absolute;top:0;width:2px;height:14px;background:var(--c-warn);}
+.shap-row{display:flex;align-items:center;gap:var(--s-3);padding:7px 0;}
+.shap-name{width:104px;font-size:12px;}
+.shap-bar{flex:1;height:12px;background:var(--c-bg);border-radius:6px;position:relative;}
+.shap-bar .fill{position:absolute;top:0;height:12px;border-radius:6px;}
+.shap-pos{background:var(--c-primary);}
+.shap-neg{background:#c3cad4;}
+.shap-val{width:44px;font-size:11px;color:var(--c-text-faint);font-variant-numeric:tabular-nums;text-align:right;}
+.prov-footer{display:flex;align-items:center;gap:var(--s-3);background:var(--c-bg);border-top:1px solid var(--c-border);padding:9px 16px;font-size:11px;color:var(--c-text-sub);border-radius:0 0 var(--radius) var(--radius);flex-wrap:wrap;}
+.prov-footer code{background:#e8eaee;border-radius:4px;padding:1px 6px;font-size:10.5px;color:var(--c-text-sub);}
+.ood-flag{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--c-warn);background:var(--c-warn-bg);border-radius:4px;padding:1px 6px;}
+.blocked{border-left:3px solid var(--c-danger);background:var(--c-danger-bg);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:8px 12px;font-size:11.5px;color:var(--c-danger);margin-top:var(--s-2);}
+
+/* ============ S2 实验管理 ============ */
+.kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s-3);align-items:start;}
+.kb-col{background:#eef0f3;border-radius:var(--radius);padding:var(--s-2);min-height:300px;}
+.kb-col .kb-h{display:flex;align-items:center;gap:6px;padding:4px 8px 10px;font-size:12px;font-weight:600;color:var(--c-text-sub);}
+.kb-col .cnt{font-size:10px;background:#dfe3e9;border-radius:8px;padding:1px 7px;color:var(--c-text-sub);}
+.kb-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:10px;margin-bottom:var(--s-2);font-size:11.5px;}
+.kb-card .id{font-weight:700;font-size:12px;}
+.kb-card .meta{color:var(--c-text-faint);margin-top:3px;line-height:1.6;}
+.kb-card.stale{border-color:#eccf8e;background:#fffdf7;}
+.kb-card .age{float:right;font-size:10px;color:var(--c-warn);}
+.banner{display:flex;align-items:center;gap:var(--s-2);border-radius:var(--radius);padding:10px 14px;font-size:12px;margin-bottom:var(--s-4);}
+.banner.warnb{background:var(--c-warn-bg);border:1px solid #eccf8e;color:var(--c-warn);}
+
+/* ============ S3/S4 二期锁屏 ============ */
+.locked-overlay{position:relative;overflow:hidden;border-radius:var(--radius);}
+.locked-overlay .dim{position:absolute;inset:0;background:rgba(245,246,248,.72);backdrop-filter:blur(1.5px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-3);z-index:2;}
+.locked-overlay .lock-icon{width:44px;height:44px;border-radius:12px;background:var(--c-locked-bg);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--c-locked);}
+.locked-overlay .t{font-size:14px;font-weight:600;color:var(--c-text-sub);}
+.locked-overlay .d{font-size:12px;color:var(--c-text-faint);max-width:420px;text-align:center;line-height:1.8;}
+
+/* ============ S5 系统管理 ============ */
+.lvl{display:inline-block;font-size:10px;border-radius:4px;padding:1px 7px;}
+.l0{background:#eef0f3;color:var(--c-text-sub);} .l1{background:var(--c-success-bg);color:var(--c-success);}
+.l2{background:var(--c-warn-bg);color:var(--c-warn);} .l3{background:var(--c-danger-bg);color:var(--c-danger);}
+.audit-line{display:flex;gap:var(--s-3);padding:7px 0;border-bottom:1px solid #f0f2f5;font-size:11.5px;}
+.audit-line .ts{color:var(--c-text-faint);width:118px;flex-shrink:0;font-variant-numeric:tabular-nums;}
+
+/* ============ 设计说明区（交接标注，非产品界面） ============ */
+.spec{max-width:1080px;margin:var(--s-6) auto;padding:var(--s-5);}
+.spec h3{font-size:14px;margin:var(--s-5) 0 var(--s-3);}
+.tok-row{display:flex;gap:var(--s-2);flex-wrap:wrap;}
+.tok{border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;background:var(--c-card);min-width:120px;}
+.tok .sw{height:22px;border-radius:4px;margin-bottom:5px;border:1px solid rgba(0,0,0,.06);}
+.spec ol{font-size:12px;color:var(--c-text-sub);line-height:2;padding-left:20px;}
+</style>
+</head>
+<body>
+
+<!-- 原型工具条 -->
+<div class="proto-bar">
+  <b>AdheFormAI · 界面原型</b><span class="ver">v0.1 · 一期 MVP 范围（ADR-12）</span>
+  <span class="spacer"></span>
+  <span class="tip">点击左侧导航切换界面 · 灰显模块为二期范围（ADR-19 衔接见交接摘要）</span>
+</div>
+
+<div class="app">
+  <!-- 侧边导航 -->
+  <aside class="nav">
+    <div class="logo"><div class="mark">AF</div><div class="name">AdheFormAI</div></div>
+    <button class="nav-item active" data-s="s1"><span class="ico">⚗</span>配方工作台</button>
+    <button class="nav-item" data-s="s2"><span class="ico">▦</span>实验管理 <span class="cnt-tag pill warn" style="padding:1px 7px;font-size:10px;">3</span></button>
+    <button class="nav-item" data-s="s3"><span class="ico">◎</span>逆向设计台<span class="tag">二期</span></button>
+    <button class="nav-item" data-s="s4"><span class="ico">❑</span>知识中心<span class="tag">二期</span></button>
+    <button class="nav-item" data-s="s5"><span class="ico">⚙</span>系统管理</button>
+    <div class="nav-foot">数据密级：机密（L2）<br>当前租户：封装材料事业部<br>会话操作已全程审计</div>
+  </aside>
+
+  <div class="main">
+    <!-- 顶栏 -->
+    <div class="topbar">
+      <span class="crumb">一期 MVP / <b id="crumb-now">配方工作台</b></span>
+      <span class="spacer"></span>
+      <span class="pill ok">● 预测服务正常 · P95 180ms</span>
+      <span class="pill secret">密级 L2 · 导出需双人审批</span>
+      <div class="avatar">研A</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ======== S1 配方工作台 ======== -->
+      <section class="screen active" id="s1">
+        <div class="wb-grid">
+          <div style="display:flex;flex-direction:column;gap:var(--s-4);">
+            <!-- 配方编辑 -->
+            <div class="card">
+              <div class="card-h">配方编辑 <span class="hint">配方版本 F-2026-0184 · v3（草稿）</span></div>
+              <div class="card-b">
+                <table>
+                  <tr><th style="width:70px;">组分角色</th><th>材料 / 牌号</th><th style="width:110px;">配比 (phr)</th><th style="width:90px;">当量比</th><th style="width:64px;"></th></tr>
+                  <tr><td><span class="role-chip">树脂</span></td><td><input type="text" value="双酚A环氧 E-51"></td><td><input type="text" value="100.0"></td><td><input type="text" value="—"></td><td></td></tr>
+                  <tr><td><span class="role-chip">固化剂</span></td><td><input type="text" value="甲基六氢苯酐"></td><td><input type="text" value="78.5"></td><td><input type="text" value="0.96"></td><td></td></tr>
+                  <tr><td><span class="role-chip">促进剂</span></td><td><input type="text" value="DMP-30"></td><td><input type="text" value="1.2"></td><td><input type="text" value="—"></td><td></td></tr>
+                  <tr><td><span class="role-chip">填料</span></td><td><input type="text" value="球形硅微粉 (α-Al₂O₃)"></td><td><input type="text" value="180.0"></td><td><input type="text" value="—"></td><td></td></tr>
+                </table>
+                <div style="display:flex;gap:var(--s-2);margin-top:var(--s-3);align-items:center;">
+                  <button class="btn">＋ 添加组分</button>
+                  <span style="font-size:11px;color:var(--c-text-faint);">配比合计 359.7 phr · 校验通过（12/12 规则）</span>
+                </div>
+                <div style="display:flex;gap:var(--s-3);margin-top:var(--s-4);">
+                  <div><div style="font-size:11px;color:var(--c-text-faint);margin-bottom:4px;">固化温度 (°C)</div><input type="text" value="150" style="width:110px;"></div>
+                  <div><div style="font-size:11px;color:var(--c-text-faint);margin-bottom:4px;">固化时间 (min)</div><input type="text" value="120" style="width:110px;"></div>
+                  <div><div style="font-size:11px;color:var(--c-text-faint);margin-bottom:4px;">后固化 (°C/h)</div><input type="text" value="180/2" style="width:110px;"></div>
+                </div>
+                <div class="blocked">⛔ 阻断 R-07：固化剂活化温度窗口与设定的 150°C 不匹配（建议 ≥ 165°C）——已拒绝提交预测，请先修正</div>
+                <div style="display:flex;gap:var(--s-2);margin-top:var(--s-4);">
+                  <button class="btn primary">重新预测</button>
+                  <button class="btn">存为版本快照</button>
+                  <button class="btn" title="需双人审批 + 水印">导出（审批中）</button>
+                </div>
+              </div>
+            </div>
+            <!-- SHAP 分组归因 -->
+            <div class="card">
+              <div class="card-h">分组归因（SHAP · 组级别） <span class="hint">单组分强共线下不可信，按角色组归因</span></div>
+              <div class="card-b" style="padding-top:6px;">
+                <div class="shap-row"><span class="shap-name">填料体系</span><div class="shap-bar"><div class="fill shap-pos" style="left:50%;width:42%;"></div></div><span class="shap-val">+0.42</span></div>
+                <div class="shap-row"><span class="shap-name">固化制度</span><div class="shap-bar"><div class="fill shap-pos" style="left:50%;width:23%;"></div></div><span class="shap-val">+0.23</span></div>
+                <div class="shap-row"><span class="shap-name">当量比偏离</span><div class="shap-bar"><div class="fill shap-neg" style="right:50%;width:15%;"></div></div><span class="shap-val">−0.15</span></div>
+                <div class="shap-row"><span class="shap-name">促进剂用量</span><div class="shap-bar"><div class="fill shap-neg" style="right:50%;width:6%;"></div></div><span class="shap-val">−0.06</span></div>
+                <div style="font-size:11px;color:var(--c-text-faint);margin-top:8px;">相似历史案例：3 条（EXP-1024 · EXP-0987 · EXP-0871，均实测）</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:var(--s-4);">
+            <!-- 预测结果 -->
+            <div class="card">
+              <div class="card-h">预测结果（多任务） <span class="hint">区间为 conformal 校准后 90% 覆盖</span></div>
+              <div class="card-b" style="padding-top:6px;">
+                <div class="metric-row">
+                  <span class="metric-name">导热系数</span>
+                  <span class="metric-val"><b>0.86</b> <span class="unit">W/m·K</span><br><span class="pm">± 0.07</span></span>
+                  <div class="ubar"><div class="track" style="left:38%;width:26%;"></div><div class="dot" style="left:51%;"></div><div class="target" style="left:72%;"></div></div>
+                  <span class="pill ok" style="flex-shrink:0;">达标区间</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-name">Tg</span>
+                  <span class="metric-val"><b>168</b> <span class="unit">°C</span><br><span class="pm">± 12</span></span>
+                  <div class="ubar"><div class="track" style="left:30%;width:22%;"></div><div class="dot" style="left:41%;"></div><div class="target" style="left:60%;"></div></div>
+                  <span class="pill warn" style="flex-shrink:0;">区间跨目标</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-name">剪切强度</span>
+                  <span class="metric-val"><b>24.5</b> <span class="unit">MPa</span><br><span class="pm">± 2.8</span></span>
+                  <div class="ubar"><div class="track" style="left:44%;width:24%;"></div><div class="dot" style="left:56%;"></div><div class="target" style="left:35%;"></div></div>
+                  <span class="pill ok" style="flex-shrink:0;">达标区间</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-name">体积电阻率</span>
+                  <span class="metric-val"><b>—</b><br><span class="pm">暂不可用</span></span>
+                  <div class="ubar" style="background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 6px,#e6e8ec 6px,#e6e8ec 12px);"></div>
+                  <span class="pill danger" style="flex-shrink:0;">OOD · 拒答</span>
+                </div>
+                <div style="font-size:11px;color:var(--c-text-faint);margin-top:10px;line-height:1.7;">⛔ 体积电阻率：当前配方落在训练数据分布之外（最近邻距离 &gt; 阈值 τ₀.₀₅），模型拒绝给出可信区间——建议先补 2 组探索性实验，而不是相信一个看似合理的数字。</div>
+              </div>
+              <div class="prov-footer">
+                <span>来源：</span><code>模型 lr-gbm v1.3.0</code><code>特征集 fs-20261104</code><code>数据快照 snap-0921</code><span>conformal 校准 90% · 全程可追溯</span>
+              </div>
+            </div>
+            <!-- 行动建议 -->
+            <div class="card">
+              <div class="card-h">下一步建议（主动学习）</div>
+              <div class="card-b">
+                <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;">
+                  <span class="pill ok">① 修正固化制度后重测 Tg（预期信息增益最高）</span>
+                  <span class="pill warn">② 电阻率 OOD：建议 2 组补点实验</span>
+                </div>
+                <div style="margin-top:var(--s-3);"><button class="btn primary">将建议送入实验管理 →</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== S2 实验管理 ======== -->
+      <section class="screen" id="s2">
+        <div class="banner warnb">⚠ 待回写积压 3 项（超 7 天）：EXP-0987 · EXP-1002 · EXP-1031 —— 闭环最常见的中断点是「推荐完没人回写」，请优先处理</div>
+        <div style="display:flex;gap:var(--s-3);margin-bottom:var(--s-4);">
+          <span class="pill ok">近 30 天推荐采纳率 72%</span>
+          <span class="pill warn">平均回写延迟 6.2 天</span>
+          <span class="pill ok">本轮闭环进度 1/2（目标 ≥2 轮完整闭环）</span>
+        </div>
+        <div class="kanban">
+          <div class="kb-col">
+            <div class="kb-h">已推荐 · 待采纳 <span class="cnt">2</span></div>
+            <div class="kb-card"><span class="id">REC-0412</span><div class="meta">Tg 补点实验 ×2<br>来源：配方 F-0184 v3 建议<br>置信增益 ★★★</div></div>
+            <div class="kb-card"><span class="id">REC-0413</span><div class="meta">电阻率 OOD 探索点<br>预期信息增益最高</div></div>
+          </div>
+          <div class="kb-col">
+            <div class="kb-h">已排产 <span class="cnt">2</span></div>
+            <div class="kb-card"><span class="id">EXP-1046</span><div class="meta">采纳自 REC-0412<br>计划 11-25 · 操作员 张</div></div>
+            <div class="kb-card"><span class="id">EXP-1047</span><div class="meta">采纳自 REC-0413<br>计划 11-26</div></div>
+          </div>
+          <div class="kb-col">
+            <div class="kb-h">实验中 <span class="cnt">1</span></div>
+            <div class="kb-card"><span class="id">EXP-1040</span><div class="meta">固化制度 A/B<br>已运行 1.5 天</div></div>
+          </div>
+          <div class="kb-col">
+            <div class="kb-h">待回写 <span class="cnt">3</span></div>
+            <div class="kb-card stale"><span class="age">超 9 天</span><span class="id">EXP-0987</span><div class="meta">原始曲线已上传 MinIO<br>缺：指标提取 + QC 标记</div></div>
+            <div class="kb-card stale"><span class="age">超 8 天</span><span class="id">EXP-1002</span><div class="meta">缺测试标准号</div></div>
+            <div class="kb-card stale"><span class="age">超 7 天</span><span class="id">EXP-1031</span><div class="meta">缺失败/取消原因记录<br><b style="color:var(--c-warn);">失败与取消必须同等留痕</b></div></div>
+          </div>
+          <div class="kb-col">
+            <div class="kb-h">已回写 · QC 通过 <span class="cnt">2</span></div>
+            <div class="kb-card"><span class="id">EXP-1038</span><div class="meta">3 指标已入训练集<br>触发增量训练 ✔</div></div>
+            <div class="kb-card"><span class="id">EXP-1039</span><div class="meta">1 失败记录全量留痕<br>入负样本池 ✔</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:var(--s-4);">
+          <div class="card-h">状态机流转规则 <span class="hint">见架构 §6.1 —— 每次流转写审计事件，幂等键防重复回写</span></div>
+          <div class="card-b" style="font-size:12px;color:var(--c-text-sub);">已推荐 → 已排产 → 实验中 → 待回写 → QC 校验 → 已入训练集 / 负样本池；QC 不通过退回待回写并标记原因；<b>失败与取消记录走同一状态机全量留痕</b>（数据红线级）。</div>
+        </div>
+      </section>
+
+      <!-- ======== S3 逆向设计台（二期锁定预览） ======== -->
+      <section class="screen" id="s3">
+        <div class="card locked-overlay" style="min-height:520px;">
+          <div style="padding:var(--s-5);opacity:.35;">
+            <div class="grid" style="grid-template-columns:300px 1fr;">
+              <div class="card" style="height:300px;"><div class="card-h">目标设定</div></div>
+              <div class="card" style="height:300px;"><div class="card-h">Pareto 前沿</div></div>
+            </div>
+          </div>
+          <div class="dim">
+            <div class="lock-icon">🔒</div>
+            <div class="t">逆向设计台 · 二期启用（ADR-12 / ADR-19 衔接）</div>
+            <div class="d">一期已预埋契约与数据血缘：目标区间由 <b>metric_definition</b> 定义（方向/区间禁止硬编码）；候选生成需通过约束库校验（原材料可得性 / 工艺窗口 / 成本）。启用条件与口径见《LLM-ACCESS-HANDOFF》与架构 §10。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== S4 知识中心（二期锁定预览） ======== -->
+      <section class="screen" id="s4">
+        <div class="card locked-overlay" style="min-height:520px;">
+          <div style="padding:var(--s-5);opacity:.35;">
+            <div class="grid" style="grid-template-columns:1fr 300px;">
+              <div class="card" style="height:300px;"><div class="card-h">检索问答</div></div>
+              <div class="card" style="height:300px;"><div class="card-h">引用来源</div></div>
+            </div>
+          </div>
+          <div class="dim">
+            <div class="lock-icon">🔒</div>
+            <div class="t">知识中心 · 二期启用（ADR-19 接入口径）</div>
+            <div class="d">LLM 只承担文本层任务（问答 / 文献解读 / 方案草案），<b>永不生成配方数值</b>；RAG 答案必须带引用（文献 ID / 页码）；选型 Qwen 32B / DeepSeek-R1 32B 档位已锁定，型号二期启动时 A/B 定版。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== S5 系统管理 ======== -->
+      <section class="screen" id="s5">
+        <div class="wb-grid">
+          <div class="card">
+            <div class="card-h">数据分级 × 角色权限矩阵（RBAC + ABAC） <span class="hint">禁止跨密级训练 · 离线任务同受约束</span></div>
+            <div class="card-b">
+              <table>
+                <tr><th>角色 \ 密级</th><th><span class="lvl l0">L0 公开</span></th><th><span class="lvl l1">L1 内部</span></th><th><span class="lvl l2">L2 机密</span></th><th><span class="lvl l3">L3 绝密</span></th></tr>
+                <tr><td>配方工程师</td><td>读</td><td>读 / 建模</td><td>项目内读写</td><td>不可见</td></tr>
+                <tr><td>研发主管</td><td>读</td><td>读</td><td>读 / 审批</td><td>项目内读</td></tr>
+                <tr><td>系统管理员</td><td>运维</td><td>运维</td><td>无数据面</td><td>无数据面</td></tr>
+                <tr><td>训练任务（专用低权限）</td><td>—</td><td>快照内</td><td>快照内</td><td>禁止</td></tr>
+              </table>
+              <div style="font-size:11px;color:var(--c-text-faint);margin-top:10px;line-height:1.7;">训练脚本使用专用低权限角色，可见数据范围写入快照元数据以便审计——防止「禁止跨密级训练」在离线链路被绕过。</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">审计日志（只追加 · 不可篡改） <span class="hint">预测 / 导出 / 回写全留痕</span></div>
+            <div class="card-b" style="padding-top:6px;">
+              <div class="audit-line"><span class="ts">11-23 13:24:08</span><span><b>研A</b> 发起导出 F-0184 → 触发双人审批 + 水印</span></div>
+              <div class="audit-line"><span class="ts">11-23 13:21:55</span><span><b>研A</b> 预测 F-0184 v3（模型 v1.3.0，2 指标拒答 OOD）</span></div>
+              <div class="audit-line"><span class="ts">11-23 11:02:31</span><span><b>系统</b> EXP-1039 失败记录全量留痕 → 负样本池</span></div>
+              <div class="audit-line"><span class="ts">11-23 10:47:12</span><span><b>主管B</b> 审批通过 REC-0412 采纳</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ 设计说明 / Figma 交接标注 ============ -->
+<div class="spec">
+  <div class="card" style="padding:var(--s-5);">
+    <h3 style="margin-top:0;">🎨 设计令牌 Design Tokens（Figma 中建为 Styles / Variables）</h3>
+    <div class="tok-row">
+      <div class="tok"><div class="sw" style="background:#4f5ff0;"></div>primary · 主操作</div>
+      <div class="tok"><div class="sw" style="background:#eef1ff;"></div>primary-bg · 选中态</div>
+      <div class="tok"><div class="sw" style="background:#2e9e63;"></div>success · 达标/通过</div>
+      <div class="tok"><div class="sw" style="background:#d9a441;"></div>warn · 需关注/积压</div>
+      <div class="tok"><div class="sw" style="background:#cf5b52;"></div>danger · 阻断/拒答</div>
+      <div class="tok"><div class="sw" style="background:#eceef1;"></div>locked · 二期灰显</div>
+      <div class="tok"><div class="sw" style="background:#f5f6f8;border:1px dashed #ccc;"></div>bg · 页面底</div>
+      <div class="tok"><div class="sw" style="background:#fff;"></div>card · 卡片</div>
+    </div>
+    <div style="font-size:11.5px;color:var(--c-text-sub);margin-top:10px;line-height:1.9;">
+      字号：20 页面题 / 15 卡片题 / 13 正文 / 12 辅助 / 11 标注 ｜ 圆角 8 卡片 · 5 控件 ｜ 间距 4 的倍数（4/8/12/16/24/32）｜ 数字一律 tabular-nums
+    </div>
+    <h3>🧭 为什么这么设计（对应架构约束）</h3>
+    <ol>
+      <li><b>不确定性是主角，不是附件</b>：每条预测并排「点估计 ± 区间条 + 目标线」，区间跨目标用 warn 色——决策者看的是区间是否达标，不是单个数字。</li>
+      <li><b>拒答是一等状态</b>：OOD 指标显示「暂不可用 + 拒答」条纹占位，绝不显示看似合理的数字（防静默失败）。</li>
+      <li><b>归因按组分角色分组</b>：SHAP 条按「树脂/固化剂/填料/工艺」组展示，配相似历史案例——单组分共线下归因不可信。</li>
+      <li><b>provenance 页脚常驻</b>：模型/特征/数据快照版本三码随结果出现，任何数字可回溯。</li>
+      <li><b>实验管理以「待回写积压」为第一屏警示</b>：闭环死法是没人回写，看板列序即状态机序，失败/取消与成功同列留痕。</li>
+      <li><b>二期屏置灰并写明启用条件</b>：灰显不是「没设计」，是 ADR-12 范围冻结的可视化——防止一期范围膨胀（风险 R7）。</li>
+    </ol>
+    <h3>📦 Figma 交接建议</h3>
+    <ol>
+      <li>画布：桌面端 1440 宽基准，断点 1024 / 768；侧边导航 212 固定，内容区自适应。</li>
+      <li>组件清单（建议抽 Component + Variants）：<b>AppShell</b>(侧导航/顶栏) · <b>MetricCard</b>(值/区间/目标线/OOD 态) · <b>UncertaintyBar</b>(track/dot/target) · <b>AttributionBar</b>(正/负) · <b>KanbanCard</b>(含 stale 态) · <b>ProvenanceFooter</b> · <b>SecrecyPill</b>(L0–L3) · <b>BlockedRule</b>。</li>
+      <li>状态变体优先做：MetricCard 的 normal / warn / OOD 拒答 三态；KanbanCard 的 normal / stale(超期) 两态。</li>
+      <li>二期屏（逆向/知识中心）可建占位 Frame + Locked Overlay 组件，交接时团队一眼看清边界。</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const crumbMap={s1:"配方工作台",s2:"实验管理",s3:"逆向设计台（二期）",s4:"知识中心（二期）",s5:"系统管理"};
+document.querySelectorAll(".nav-item").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".nav-item").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    btn.classList.add("active");
+    const id=btn.dataset.s;
+    document.getElementById(id).classList.add("active");
+    document.getElementById("crumb-now").textContent=crumbMap[id];
+  });
+});
+</script>
+</body>
+</html>
