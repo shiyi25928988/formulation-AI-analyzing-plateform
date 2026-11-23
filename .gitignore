@@ -1,0 +1,133 @@
+# ============================================================
+# 数据红线：真实配方、实测性能、原材料批次、客户资料一律不得入库
+# 提交前请务必执行 git status 人工复核
+# ============================================================
+data/
+datasets/
+raw/
+samples/
+fixtures/real/
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.db
+*.sqlite
+*.sqlite3
+*.h5
+*.hdf5
+*.cdf
+*.dx
+*.jdx
+*.raw
+*.dpt
+
+# 允许提交脱敏的示例模板（不得含真实配方数据）
+!examples/
+!examples/*.csv
+!examples/*.xlsx
+
+# ------------------------------------------------------------
+# 密钥与本地环境
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*
+secrets*
+.venv/
+venv/
+env/
+
+# ------------------------------------------------------------
+# 模型产物与实验记录（体积大且可能反推训练数据）
+# ------------------------------------------------------------
+models/
+checkpoints/
+weights/
+runs/
+mlruns/
+wandb/
+outputs/
+artifacts/
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.pickle
+*.joblib
+*.bin
+*.safetensors
+*.ckpt
+
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+.tox/
+.nox/
+poetry.lock.bak
+Pipfile.lock.bak
+
+# ------------------------------------------------------------
+# Node / 前端
+# ------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+dist-ssr/
+*.local
+.vite/
+.nuxt/
+.turbo/
+coverage/
+
+# ------------------------------------------------------------
+# 容器与本地编排
+# ------------------------------------------------------------
+*.log
+logs/
+docker-compose.override.yml
+k8s/secrets/
+helm-secrets/
+.kube/
+
+# ------------------------------------------------------------
+# IDE 与操作系统
+# ------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ------------------------------------------------------------
+# WorkBuddy 本地工作数据（非临时缓存，保留在本地但不入库）
+# ------------------------------------------------------------
+.workbuddy/
