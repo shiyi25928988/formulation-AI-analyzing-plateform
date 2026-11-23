@@ -71,6 +71,8 @@
 |---|---|---|---|---|
 | R0 | 2026-11-23 | 仓库初始化与架构入库 | `README.md`、`docs/ARCHITECTURE.md` v2.0、`.gitignore` | `f081a6b`、`a472307` |
 | R1 | 2026-11-23 | 补全架构视图与工程化缺口 | 架构升级 v2.1（§15–§18、ADR-13~18、术语与开放问题）、本文、`CHANGELOG.md`、`.gitattributes` | `a6d0ae7` |
+| R1.5 | 2026-11-23 | 附录 B 第 9 项定论、ADR-19、二期衔接与界面原型 | 第 9 项按文献依据定论（附录 B.1）；ADR-19 + §7.2 接入口径表；`LLM-ACCESS-HANDOFF.md`；界面原型 v0.1 | `423b7da`、`8c23961`、`f5648e6`、`256fea0` |
+| R1.6 | 2026-11-23 | 功能设计 v0.1 与 F1/F2 详设，团队评审修正 | `FEATURE-DESIGN-v0.1.md`（F1–F6、F10）、`F01-F02-DETAIL-DESIGN.md`；software-adhe-review 评审（P0×6/P1×13/P2×16）后统一修正：OOD 两级处置统一、conformal 三档入 §4.3/§5.2、§4.3 分位修正、§11 功能细化登记、`CanaryFailed` 事件、fidelity 枚举、引用/表名/角色口径修正、原型 S1/S2/S5 对齐 | `5a248a7` 及配套设计文档提交 |
 
 **R1 具体完成**：4+1 视图矩阵与进程/开发/场景视图；超时预算与三条关键时序；10 项 FMEA 与 AI 静默失败防护；四级降级、事件目录与强弱一致边界；离线回放验证方法、故障注入与 go/no-go 检查单；代码依赖方向、walking skeleton、RLS 落地、扩展-收缩迁移、fitness function、RACI。**未改变** v2.0 的任何架构立场与 MVP 范围。
 
