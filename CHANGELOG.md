@@ -37,6 +37,13 @@
 - **附录 B 第 9 项定论**：历史实验序列按「失败 / 取消记录大概率不完整」设计，不再作为 B02 前置待办。依据：Raccuglia et al.（*Nature*, 2016, 533: 73–76，dark reactions 项目，失败数据可显著改善模型）与 Precision Chemistry 2026 综述（DOI: 10.1021/prechem.5c00449，失败实验极少被数字化，负结果应为一等记录）。落点：§17.2 增加幸存者偏差三步诊断与全量 / 保守两档回放；新采集数据强制全记录失败与取消（数据红线级）；附录 B 改为「开放问题与已定决策」结构，待确认问题由 11 项减至 10 项；backlog B02 前置依赖解除。
 - **ADR-19（LLM 接入口径）**：私有 LLM 按任务分层接入——主力 Qwen 32B INT4（问答/解读/生成）、深度推理 DeepSeek-R1 蒸馏 32B（失败分析/推演）、轻量 Qwen 8B 级（分类/抽取/路由），配套 BGE-M3 + BGE-reranker；限定开源可商用权重（气隙与数据红线排除 API 模型），统一 OpenAI 兼容接口、版本固定可审计、可替换；不做微调定制，领域知识靠 RAG 注入；**LLM 永不生成配方数值**，性能数字只能来自预测服务。§7.2 增加接入口径表，ADR 总数 19 条。
 
+### 修订（评审修正轮，2026-11-23 · software-adhe-review 团队评审后统一修正）
+
+- **OOD 处置统一为两级**（P0 口径矛盾）：§4.3 设计要点、§15.3 链路 A 失败点、§16.1 FMEA F5 统一为 `ood_level ∈ {none, advisory, severe}`——advisory 返回数值 + `advisory_only` 强制标记；severe 拒答该指标不返回数值。下游设计文档与原型同步。
+- §4.3 区间示例修正为数学自洽：p10/p90 + confidence 0.9 → **p5/p95 + confidence 0.9**；§4.3/§5.2 明确 conformal 输出统一为 **50%/70%/90% 三档**（90% 为验收档）。
+- §11 新增「一期功能细化登记」，与 `FEATURE-DESIGN-v0.1.md`（F1–F6、F10）互相引用，消除两份一期范围口径的漂移。
+- §16.4 事件目录补 `CanaryFailed`（model-lifecycle-svc 发布）；§3.2 `test_result.fidelity` 补枚举定义（experiment/F2、simulation/F1、literature/F0）。
+
 ### 保持不变
 
 质量属性优先级（§1）、小样本选型（ADR-02）、私有化与气隙优先（ADR-03）、MVP 范围（ADR-12）、三阶段路线、量化验收指标、数据红线。
@@ -64,6 +71,11 @@
 | `f081a6b` | `docs: initialize architecture v2.0 and project conventions` —— 初始提交，3 文件 / 815 行，建立并跟踪 `origin/main` |
 | `a472307` | `docs: make repository status statement time-independent` —— 修正 README 中随状态漂移的描述 |
 | `a6d0ae7` | `docs: architecture v2.1 - runtime views, resilience, validation and evolution governance` —— 架构升级 v2.1、迭代机制文档、变更记录、换行规范与 README 导航更新（5 文件 / +594 −20） |
+| `27424ce` | `docs: proofread architecture set - fix cross-refs, missing table defs and terminology` —— 全文校对修正 11 处（引用/表定义/术语） |
+| `423b7da` | `docs: resolve open question 9 - survivor-bias-first replay design with cited evidence` —— 附录 B 第 9 项定论（附录 B.1），B02 前置依赖解除 |
+| `8c23961` | `docs: add ADR-19 layered LLM access with text-only boundary` —— §7.2 私有 LLM 接入口径表 + ADR-19 |
+| `f5648e6` | `docs: add one-page LLM access handoff brief for phase-2 team` —— 二期 LLM 接入一页衔接摘要 |
+| `256fea0` | `docs: add UI prototype v0.1 with design tokens and figma handoff notes` —— 界面原型 v0.1（5 界面 + 设计令牌 + Figma 交接） |
 
 ---
 

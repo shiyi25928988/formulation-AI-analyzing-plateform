@@ -166,7 +166,7 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
     <div class="topbar">
       <span class="crumb">一期 MVP / <b id="crumb-now">配方工作台</b></span>
       <span class="spacer"></span>
-      <span class="pill ok">● 预测服务正常 · P95 180ms</span>
+      <span class="pill ok">● 预测服务正常 · P95 &lt;150ms</span>
       <span class="pill secret">密级 L2 · 导出需双人审批</span>
       <div class="avatar">研A</div>
     </div>
@@ -197,7 +197,7 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
                   <div><div style="font-size:11px;color:var(--c-text-faint);margin-bottom:4px;">固化时间 (min)</div><input type="text" value="120" style="width:110px;"></div>
                   <div><div style="font-size:11px;color:var(--c-text-faint);margin-bottom:4px;">后固化 (°C/h)</div><input type="text" value="180/2" style="width:110px;"></div>
                 </div>
-                <div class="blocked">⛔ 阻断 R-07：固化剂活化温度窗口与设定的 150°C 不匹配（建议 ≥ 165°C）——已拒绝提交预测，请先修正</div>
+                <div class="blocked">⛔ 阻断 R-07：固化剂活化温度窗口与设定的 150°C 不匹配（建议 ≥ 165°C）——已拒绝提交预测，请先修正；下方结果为修正前 v2 版本的历史预测快照</div>
                 <div style="display:flex;gap:var(--s-2);margin-top:var(--s-4);">
                   <button class="btn primary">重新预测</button>
                   <button class="btn">存为版本快照</button>
@@ -245,9 +245,9 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
                   <span class="metric-name">体积电阻率</span>
                   <span class="metric-val"><b>—</b><br><span class="pm">暂不可用</span></span>
                   <div class="ubar" style="background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 6px,#e6e8ec 6px,#e6e8ec 12px);"></div>
-                  <span class="pill danger" style="flex-shrink:0;">OOD · 拒答</span>
+                  <span class="pill danger" style="flex-shrink:0;">severe OOD · 拒答</span>
                 </div>
-                <div style="font-size:11px;color:var(--c-text-faint);margin-top:10px;line-height:1.7;">⛔ 体积电阻率：当前配方落在训练数据分布之外（最近邻距离 &gt; 阈值 τ₀.₀₅），模型拒绝给出可信区间——建议先补 2 组探索性实验，而不是相信一个看似合理的数字。</div>
+                <div style="font-size:11px;color:var(--c-text-faint);margin-top:10px;line-height:1.7;">⛔ 体积电阻率：severe OOD（最近邻距离 &gt; 阈值 τ_hard），按两级处置规则（架构 §4.3）拒答该指标、不给出数值；轻度 OOD 则以 advisory_only 黄标返回数值。建议先补 2 组探索性实验，而不是相信一个看似合理的数字。</div>
               </div>
               <div class="prov-footer">
                 <span>来源：</span><code>模型 lr-gbm v1.3.0</code><code>特征集 fs-20261104</code><code>数据快照 snap-0921</code><span>conformal 校准 90% · 全程可追溯</span>
@@ -305,7 +305,7 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
         </div>
         <div class="card" style="margin-top:var(--s-4);">
           <div class="card-h">状态机流转规则 <span class="hint">见架构 §6.1 —— 每次流转写审计事件，幂等键防重复回写</span></div>
-          <div class="card-b" style="font-size:12px;color:var(--c-text-sub);">已推荐 → 已排产 → 实验中 → 待回写 → QC 校验 → 已入训练集 / 负样本池；QC 不通过退回待回写并标记原因；<b>失败与取消记录走同一状态机全量留痕</b>（数据红线级）。</div>
+          <div class="card-b" style="font-size:12px;color:var(--c-text-sub);">已推荐 → 已排产 → 实验中 → 待回写 → 工程师确认（REVIEWED）→ QC 校验 → 已入训练集 / 失败样本库（REJECTED）/ 取消（CANCELLED）；QC 不通过按 REJECTED 记录原因进失败样本库（不退回待回写）；<b>失败与取消记录走同一状态机全量留痕</b>（数据红线级）。</div>
         </div>
       </section>
 
@@ -320,8 +320,8 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
           </div>
           <div class="dim">
             <div class="lock-icon">🔒</div>
-            <div class="t">逆向设计台 · 二期启用（ADR-12 / ADR-19 衔接）</div>
-            <div class="d">一期已预埋契约与数据血缘：目标区间由 <b>metric_definition</b> 定义（方向/区间禁止硬编码）；候选生成需通过约束库校验（原材料可得性 / 工艺窗口 / 成本）。启用条件与口径见《LLM-ACCESS-HANDOFF》与架构 §10。</div>
+            <div class="t">逆向设计台 · 二期启用（一期范围冻结见 ADR-12）</div>
+            <div class="d">一期已预埋契约与数据血缘：目标区间由 <b>metric_definition</b> 定义（方向/区间禁止硬编码）；候选生成需通过约束库校验（原材料可得性 / 工艺窗口 / 成本）。技术依据：架构 §5.3 优化与主动学习；与 ADR-19 的衔接口径见《LLM-ACCESS-HANDOFF》。</div>
           </div>
         </div>
       </section>
@@ -338,7 +338,7 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
           <div class="dim">
             <div class="lock-icon">🔒</div>
             <div class="t">知识中心 · 二期启用（ADR-19 接入口径）</div>
-            <div class="d">LLM 只承担文本层任务（问答 / 文献解读 / 方案草案），<b>永不生成配方数值</b>；RAG 答案必须带引用（文献 ID / 页码）；选型 Qwen 32B / DeepSeek-R1 32B 档位已锁定，型号二期启动时 A/B 定版。</div>
+            <div class="d">LLM 只承担文本层任务（问答 / 文献解读 / 方案草案），<b>永不生成配方数值</b>；RAG 答案必须带引用（文献 ID / 页码）；档位与边界已锁定（ADR-19），具体型号二期启动时按真实业务样本 A/B 定版。</div>
           </div>
         </div>
       </section>
@@ -350,7 +350,7 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
             <div class="card-h">数据分级 × 角色权限矩阵（RBAC + ABAC） <span class="hint">禁止跨密级训练 · 离线任务同受约束</span></div>
             <div class="card-b">
               <table>
-                <tr><th>角色 \ 密级</th><th><span class="lvl l0">L0 公开</span></th><th><span class="lvl l1">L1 内部</span></th><th><span class="lvl l2">L2 机密</span></th><th><span class="lvl l3">L3 绝密</span></th></tr>
+                <tr><th>角色 \ 密级</th><th><span class="lvl l0">L0 公开</span></th><th><span class="lvl l1">L1 内部</span></th><th><span class="lvl l2">L2 机密</span></th><th><span class="lvl l3">L3 核心</span></th></tr>
                 <tr><td>配方工程师</td><td>读</td><td>读 / 建模</td><td>项目内读写</td><td>不可见</td></tr>
                 <tr><td>研发主管</td><td>读</td><td>读</td><td>读 / 审批</td><td>项目内读</td></tr>
                 <tr><td>系统管理员</td><td>运维</td><td>运维</td><td>无数据面</td><td>无数据面</td></tr>
@@ -363,7 +363,7 @@ input:focus,select:focus{outline:2px solid var(--c-primary-border);border-color:
             <div class="card-h">审计日志（只追加 · 不可篡改） <span class="hint">预测 / 导出 / 回写全留痕</span></div>
             <div class="card-b" style="padding-top:6px;">
               <div class="audit-line"><span class="ts">11-23 13:24:08</span><span><b>研A</b> 发起导出 F-0184 → 触发双人审批 + 水印</span></div>
-              <div class="audit-line"><span class="ts">11-23 13:21:55</span><span><b>研A</b> 预测 F-0184 v3（模型 v1.3.0，2 指标拒答 OOD）</span></div>
+              <div class="audit-line"><span class="ts">11-23 13:21:55</span><span><b>研A</b> 预测 F-0184 v3（模型 v1.3.0，1 指标 severe OOD 拒答）</span></div>
               <div class="audit-line"><span class="ts">11-23 11:02:31</span><span><b>系统</b> EXP-1039 失败记录全量留痕 → 负样本池</span></div>
               <div class="audit-line"><span class="ts">11-23 10:47:12</span><span><b>主管B</b> 审批通过 REC-0412 采纳</span></div>
             </div>

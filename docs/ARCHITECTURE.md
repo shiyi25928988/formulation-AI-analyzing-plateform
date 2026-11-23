@@ -171,7 +171,7 @@ Model / FeatureSet / DatasetSnapshot：通过 DataLineage 与上述实体关联
 | `material` | `id, cas_no, smiles, supplier, func_group, functionality, density, price, availability` | SMILES/CAS 用于分子描述符；`availability` 与 `price` 供约束检查 |
 | `material_batch` | `id, material_id, supplier, lot_no, coa_ref, received_at, expiry, props_json` | 批次物性是 point-in-time 特征的来源；禁止用最新批次回填历史配方（§17.2 标签泄漏陷阱） |
 | `experiment` | `id, batch_id, formula_version_id, doe_design_id, state, planned_at, finished_at, operator_id` | `state` 为显式状态机（见 §6.1） |
-| `test_result` | `id, experiment_id, metric_id, raw_ref(MinIO), value, unit, test_standard, fidelity, qc_flag` | `fidelity` 标记实验/仿真/文献三档；`qc_flag` 决定是否可入训练集 |
+| `test_result` | `id, experiment_id, metric_id, raw_ref(MinIO), value, unit, test_standard, fidelity, qc_flag` | `fidelity` 标记数据保真度，枚举 `experiment(F2) / simulation(F1) / literature(F0)`（对应 §3.4）；`qc_flag` 决定是否可入训练集 |
 | `metric_definition` | `code, name, unit, direction(higher_better/lower_better/target), acceptable_range` | 优化目标的方向与区间必须由业务在此定义，禁止硬编码在模型代码里 |
 | `feature_set` | `id, version, definition_hash, generator_version, created_at` | `definition_hash` 保证特征定义可复现 |
 | `model_registry` | `id, model_type, version, feature_set_id, dataset_snapshot_id, metrics_json, stage` | 模型与特征版本、数据快照强制三元组绑定 |
@@ -252,7 +252,7 @@ POST /api/v1/predict
   "request_id": "...",
   "predictions": [
     { "metric": "thermal_conductivity", "value": 1.42, "unit": "W/(m·K)",
-      "interval": { "p10": 1.21, "p90": 1.63, "confidence": 0.9 },
+      "interval": { "p5": 1.16, "p95": 1.68, "confidence": 0.9 },
       "ood_flag": false,
       "explanation": { "method": "shap", "top_factors": [...] } }
   ],
@@ -262,7 +262,8 @@ POST /api/v1/predict
 ```
 
 设计要点：
-- **不确定性是必返字段**，不是可选开关；`ood_flag=true` 时前端必须显式提示「超出训练分布，结果仅供参考」。
+- **不确定性是必返字段**，不是可选开关；区间分位与置信标称必须数学自洽（90% 置信对应 p5/p95）。预测服务统一输出 **50% / 70% / 90% 三档** conformal 区间（50% 供主动学习采集函数、70% 供批次决策、90% 为验收与对外口径）；`ood_level` 见 §15.3 的两级处置。
+- `ood_level ∈ {none, advisory, severe}`：`advisory` 返回数值并强制 `advisory_only` 标记 + UI 提示不得直接采纳；`severe` 明确拒答该指标（不返回数值），UI 显示「暂不可用」——宁可明示不可信，绝不返回看似合理的数字。
 - **provenance 必返**，且写入审计日志，与 §3.5 呼应。
 - 所有 POST 支持 `Idempotency-Key`；异步任务返回 `task_id`，状态机为 `queued → running → succeeded / failed / cancelled`，失败保留中间产物供排查。
 - 版本化路径 `/api/v1`，破坏性变更升版本，旧版本至少并行 2 个迭代周期。
@@ -304,7 +305,7 @@ v1 列出了算法清单；本节回答「在小样本、强合规、需可信�
 | 结构信息 | GNN（预训练 + 微调） | 数据量或迁移条件具备后再上，与树模型做 stacking |
 | 融合 | 多保真度残差校正（§3.4） | 把文献/仿真知识注入而不污染实测标签 |
 
-**不确定性必须校准**：分位数回归 / 深度集成给出的区间常过于自信。上线前用 **conformal prediction** 在留出集上做校准，验收指标是「90% 区间的实际覆盖率 ≥ 88%」，而不是只看点预测 RMSE。未校准的不确定性会直接误导主动学习的采集函数。
+**不确定性必须校准**：分位数回归 / 深度集成给出的区间常过于自信。上线前用 **conformal prediction** 在留出集上做校准，验收指标是「90% 区间的实际覆盖率 ≥ 88%」，而不是只看点预测 RMSE。未校准的不确定性会直接误导主动学习的采集函数。输出统一为 **50% / 70% / 90% 三档区间**（验收只看 90% 档），三档经同一校准管线生成，禁止各处自行另设分位数。
 
 **物理与机理一致性**：引入单调性/符号约束（如填料体积分数上升对导热的正向趋势、交联密度上升对 Tg 的正向趋势），可用单调约束 GBDT 或对违反方向的结果打标复核。模型给出「物理上不可能」的组合时，应触发人工复核而非直接推送给实验。
 
@@ -521,6 +522,8 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 
 **一期真正的验收门槛**：不是「模型上线」，而是**跑通至少 2 轮完整闭环**——推荐被采纳、实验完成、结果回写、模型更新、下一轮推荐发生变化。
 
+**一期功能细化登记**：在上述「做」清单范围内，产品功能承接细节见 [`docs/design/FEATURE-DESIGN-v0.1.md`](../design/FEATURE-DESIGN-v0.1.md)（F1 校准追踪 / F2 版本对比 / F3 批量筛选 / F4 数据质量看板 / F5 审批工作台 / F6 通知中心 / F10 批次推荐与 Pareto 简化视图）。该清单全部只消费本节已列能力，属范围细化而非扩展；新增功能仍须核对不触碰「不做」清单（ADR-12），否则按 §18.6 走变更评审。
+
 ### 二期（闭环深化与知识增强）
 
 主动学习全闭环（批次去冗余、成本权重、pending 占用）；增量训练 + 防遗忘；漂移自动触发重训与回滚；LIMS/ELN 双向对接（幂等 + 对账）；知识中心（RAG + 私有 LLM，带引用）；多保真度融合；GNN 在数据量达标后以 stacking 方式引入。
@@ -645,7 +648,7 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 | 失败点 | 处置 |
 |---|---|
 | 特征版本与模型版本不匹配 | **拒绝服务**，不得静默回退旧特征 |
-| OOD 命中 | 返回值但强制标记 `advisory_only`，UI 提示不得直接采纳 |
+| OOD 命中 | 分级处置（§4.3）：轻度 `advisory` 返回值并强制标记 `advisory_only`，UI 提示不得直接采纳；严重 `severe` 拒答该指标，不返回数值 |
 | 物理一致性违规 | 同上，并写入复核队列 |
 | 解释超时 | 部分响应 + 异步补齐 |
 | 审计写入失败 | 不阻塞响应，但触发告警并要求补偿写入（审计完整率是硬指标） |
@@ -692,7 +695,7 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 | F2 | 模型文件损坏或版本错配 | 结果不可信 | 启动时校验哈希与三元组 | 就绪探针不通过，fail-fast，不静默加载 |
 | F3 | Feature Store 不可用 | 无法特征化 | 缓存命中率与连接告警 | TTL 内可用缓存但标记 `degraded`；超时后拒绝在线预测 |
 | F4 | 解释服务超时 | 响应变慢 | P95 分环节埋点 | 部分响应，`explanation_status=deferred` |
-| F5 | OOD / 物理一致性违规 | 误导实验 | 语义断言 | `advisory_only` + UI 强制提示 + 人工复核队列 |
+| F5 | OOD / 物理一致性违规 | 误导实验 | 语义断言 | 两级处置（§4.3）：advisory_only + UI 强制提示 + 人工复核队列；severe 拒答 |
 | F6 | 回写数据未过 QC | 污染训练快照 | QC 规则引擎 | 进死信队列 + 人工队列，不进快照 |
 | F7 | LIMS/ELN 同步失败 | 数据缺口 | 同步延迟监控 | 本地先落库，指数退避重试 + 幂等键，每日对账兜底 |
 | F8 | 训练任务失败 / 被抢占 | 模型未更新 | Job 状态 | 保留种子与中间产物可续训；不自动发布 |
@@ -754,6 +757,7 @@ RECOMMENDED → REVIEWED（工程师确认/调整）→ SCHEDULED → IN_PROGRES
 | `DataAccepted` / `DataRejected` | QC 服务 | 快照、训练编排、运营看板 | 至少一次 + 幂等 |
 | `DatasetSnapshotFrozen` | data-hub-svc | 训练编排 | 至少一次 + 幂等 |
 | `ModelTrained` / `ModelPromoted` | model-lifecycle-svc | 在线推理、审计、通知 | 至少一次 + 幂等 |
+| `CanaryFailed` | model-lifecycle-svc | 通知、告警、灰度回退 | 至少一次 + 幂等 |
 | `DriftDetected` | 监控 | 训练编排、告警 | 至少一次，允许重复 |
 | `ExportRequested` | BFF | 审批、脱敏、审计 | 有效恰好一次（幂等键 + 审批状态机实现） |
 
