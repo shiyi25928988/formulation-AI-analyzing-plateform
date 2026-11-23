@@ -27,6 +27,8 @@
 |---|---|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构总纲 v2.1。§1–§14：约束与质量属性、分层与三条主线、领域模型、服务契约、AI 工程化、闭环状态机、安全矩阵、部署与 SLO、19 条 ADR、路线与验收；§15–§18：运行期视图与时序、FMEA 与静默失败、离线回放验证、开发视图与演进治理 |
 | [`docs/architecture/ITERATION_BACKLOG.md`](docs/architecture/ITERATION_BACKLOG.md) | 迭代原则、完成定义、按优先级排序的 14 项待办、迭代记录与下一轮目标 |
+| [`docs/architecture/LLM-ACCESS-HANDOFF.md`](docs/architecture/LLM-ACCESS-HANDOFF.md) | 一页摘要：私有 LLM 接入从 ADR-12 到 ADR-19 的衔接口径（触发条件、预埋契约、选型档位、红线、二期待办） |
+| [`docs/design/prototype-v0.1.html`](docs/design/prototype-v0.1.html) | 界面原型 v0.1（一期 MVP 范围）：5 个界面 + 设计令牌 + Figma 交接标注；二期屏灰显对应 ADR-12 范围冻结 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 
 架构文档附录 B 现含 **1 项已定决策与 10 项待客户确认的开放问题**。已定决策：「历史是否保留失败与取消记录」依据行业证据（失败实验极少被数字化，Raccuglia et al., *Nature* 2016）按「历史库大概率不完整」处理——离线回放内置幸存者偏差诊断，新采集数据强制全记录失败与取消。开放问题中「历史数据可用样本量」仍决定模型选型是否调整。
