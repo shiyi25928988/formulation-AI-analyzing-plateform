@@ -51,8 +51,8 @@
 |---|---|
 | `f081a6b` | `docs: initialize architecture v2.0 and project conventions` —— 初始提交，3 文件 / 815 行，建立并跟踪 `origin/main` |
 | `a472307` | `docs: make repository status statement time-independent` —— 修正 README 中随状态漂移的描述 |
-| 本轮提交 | 架构升级 v2.1、迭代机制文档、变更记录、换行规范与 README 导航更新 |
+| `a6d0ae7` | `docs: architecture v2.1 - runtime views, resilience, validation and evolution governance` —— 架构升级 v2.1、迭代机制文档、变更记录、换行规范与 README 导航更新（5 文件 / +594 −20） |
 
 ---
 
-*架构版本升级不改变已发布提交的历史；如需对比，以 Git 历史为准。*
+*架构版本升级不改变已发布提交的历史；如需对比，以 Git 历史为准。仅修正文档元数据（如补全提交号）的收尾提交不再逐条列入本表，避免自指。*
