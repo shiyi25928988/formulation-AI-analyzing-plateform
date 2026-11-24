@@ -5,6 +5,24 @@
 
 ---
 
+## [R2.6 实现轮 · B09 生命周期 store + 门禁] · 2026-11-24
+
+**主题**：`lifecycle/`——把 B09 详设的状态机与门禁变成可运行代码（实现轮第一件：store + gates）。
+
+### 新增
+
+- `lifecycle/store.py`：ModelLifecycleStore（五态状态机 + 六条迁移白名单 T0–T5；`_check`/`_apply` 分离，守卫先于状态变更，防半迁移；T0 以 gate_report 全过才入册；manual-retire 强制 approver；rollback 无可用 peer 拒绝）
+- `lifecycle/gates.py`：`run_register_gate`（G0–G5 短路求值，FAIL 后未执行项标 SKIPPED）+ `run_canary_gate`（C1 直接调 B06 `run_canary` 单一来源；C2 双版本中位偏差 σ 计 + 分布突变阻断）；`THRESHOLDS` 双口径常量集中（production-rel ≤2% vs skeleton-abs ≤0.5×噪声）
+- `lifecycle/test_lifecycle.py`（14 项，含契约目录对齐）+ `lifecycle/test_gates.py`（10 项，含 gates→lifecycle T0 端到端，统一 B06 SEED=11）
+
+### 变更
+
+- `skeleton/store.py` emit 兼容扩展 `aggregate_id`（幂等键四元组第 3 元，生命周期事件以 model_version 聚合）
+- `events.schema.json` gate_report results 项补可选 `detail`（逐项判定留痕，模型卡引用）
+- 测试全过：lifecycle 24 + skeleton 21 + contracts 18 项
+
+---
+
 ## [R2.6 进行中 · B09 详设] · 2026-11-24
 
 **主题**：训练→门禁→注册→灰度流水线详设 + 模型卡模板（`docs/design/B09-PIPELINE-DETAIL-DESIGN.md`），实现轮待办。
