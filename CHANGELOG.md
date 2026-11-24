@@ -15,6 +15,13 @@
 - 模型卡 8 节模板 + 字段级填充来源表（约 83% 字段骨架可自动填充，DoD 口径 ≥80% 达成）
 - 契约扩展清单：6 事件 + 4 API + model_registry 迁移白名单触发器（实现轮补录）
 
+### 契约补录（2026-11-24 当轮完成，DDL 触发器除外）
+
+- **6 事件**（catalog 13→19 + payload $defs）：`ModelRegistered`（T0 全过入册）、`ModelGateFailed`（失败=不入册留痕）、`ModelShadowStarted`（T1，含最低观察量与回写轮数节拍）、`ModelCanaryStarted`（T2，灰度阶梯 5%→25%→100%）、`ModelDeprecated`（T4/T5 终态，reason 枚举）、`ModelRolledBack`（路由回切非状态迁移，回切目标=同 type 仍 production 的上一版本）
+- **4 API**（model-lifecycle-svc 5→9 paths）：`POST /models/{v}/gate`（G0–G5 短路求值）、`POST /models/{v}/shadow/start`、`POST /models/{v}/canary/start`（非法迁移 409 = /errors/invalid-transition）、`GET /models/{v}/model-card`（auto_fill_ratio ≥0.80 口径入响应）
+- §16.4 表加生命周期事件行；校验器 PASS + 18 项契约测试全过
+- **待办**：`model_registry` 迁移白名单触发器（migration 002，与 `experiment_transition_guard` 同构）
+
 ---
 
 ## [R2.5 交付] · 2026-11-24

@@ -6,15 +6,23 @@
     "description": "训练编排、评估门禁、注册、灰度、回滚、漂移监控（§4.1 / §5.5）。控制面，不承载在线流量。校准统计 /calibration/* 归本服务（F1 详设：docs/design/F01-F02-DETAIL-DESIGN.md）。模型生产版本指针切换为强一致（§16.5）；训练绝不自动发布（§15.2）。",
     "x-service-boundary": "不负责：在线推理流量"
   },
-  "servers": [{ "url": "https://gw.adheform.internal/api/v1/model-lifecycle" }],
+  "servers": [
+    {
+      "url": "https://gw.adheform.internal/api/v1/model-lifecycle"
+    }
+  ],
   "paths": {
     "/training/runs": {
       "post": {
         "operationId": "startTrainingRun",
         "summary": "启动训练/重训（异步，GPU 队列；消费 DatasetSnapshotFrozen/DataAccepted 触发或手动）",
         "parameters": [
-          { "$ref": "#/components/parameters/XTenantId" },
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -22,23 +30,56 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model_version_of", "dataset_snapshot_id", "feature_set_version"],
+                "required": [
+                  "model_version_of",
+                  "dataset_snapshot_id",
+                  "feature_set_version"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "model_version_of": { "type": "string", "description": "逻辑模型名。" },
-                  "dataset_snapshot_id": { "$ref": "../schemas/common.schema.json#/$defs/DatasetSnapshotId" },
-                  "feature_set_version": { "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion" },
-                  "retrain_of": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion", "description": "重训基线版本；门禁按 §5.5 对照。" },
-                  "targets": { "type": "array", "minItems": 1, "items": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" } }
+                  "model_version_of": {
+                    "type": "string",
+                    "description": "逻辑模型名。"
+                  },
+                  "dataset_snapshot_id": {
+                    "$ref": "../schemas/common.schema.json#/$defs/DatasetSnapshotId"
+                  },
+                  "feature_set_version": {
+                    "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion"
+                  },
+                  "retrain_of": {
+                    "$ref": "../schemas/common.schema.json#/$defs/ModelVersion",
+                    "description": "重训基线版本；门禁按 §5.5 对照。"
+                  },
+                  "targets": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "../schemas/common.schema.json#/$defs/MetricCode"
+                    }
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "202": { "description": "任务受理（train 队列，§15.2）。完成后发布 ModelTrained。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
-          "400": { "$ref": "#/components/responses/ValidationError" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "202": {
+            "description": "任务受理（train 队列，§15.2）。完成后发布 ModelTrained。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/task.schema.json"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
         }
       }
     },
@@ -47,9 +88,20 @@
         "operationId": "promoteModel",
         "summary": "模型晋升（门禁通过 + 影子观察后；生产指针切换强一致）",
         "parameters": [
-          { "$ref": "#/components/parameters/XTenantId" },
-          { "$ref": "#/components/parameters/IdempotencyKey" },
-          { "name": "model_version", "in": "path", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" } }
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "model_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -57,20 +109,49 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["gate_report_ref"],
+                "required": [
+                  "gate_report_ref"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "gate_report_ref": { "type": "string", "description": "§5.5 门禁报告引用（固定评估集 + golden set + 金丝雀结果）。" },
-                  "shadow": { "type": "boolean", "default": true, "description": "true = 先影子流量观察（§17.3），观察期按实验回写周期设定。" }
+                  "gate_report_ref": {
+                    "type": "string",
+                    "description": "§5.5 门禁报告引用（固定评估集 + golden set + 金丝雀结果）。"
+                  },
+                  "shadow": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "true = 先影子流量观察（§17.3），观察期按实验回写周期设定。"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "202": { "description": "晋升受理；发布 ModelPromoted。双缓冲加载切版本不留空窗（§15.2）。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
-          "409": { "description": "门禁未通过（§5.5）；Problem Details type=/errors/gate-failed。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "202": {
+            "description": "晋升受理；发布 ModelPromoted。双缓冲加载切版本不留空窗（§15.2）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/task.schema.json"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "门禁未通过（§5.5）；Problem Details type=/errors/gate-failed。",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "../schemas/error.schema.json"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
         }
       }
     },
@@ -79,13 +160,35 @@
         "operationId": "rollbackModel",
         "summary": "回滚生产版本（消费 CanaryFailed 后执行或手动触发）",
         "parameters": [
-          { "$ref": "#/components/parameters/XTenantId" },
-          { "$ref": "#/components/parameters/IdempotencyKey" },
-          { "name": "model_version", "in": "path", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" } }
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "model_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "生产指针已切回（强一致，§16.5）。", "content": { "application/json": { "schema": { "$ref": "../schemas/provenance.schema.json" } } } },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "200": {
+            "description": "生产指针已切回（强一致，§16.5）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/provenance.schema.json"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
         }
       }
     },
@@ -94,9 +197,25 @@
         "operationId": "getCalibrationStats",
         "summary": "校准追踪统计（F1：/calibration/* 归本服务）",
         "parameters": [
-          { "$ref": "#/components/parameters/XTenantId" },
-          { "name": "model_version", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" } },
-          { "name": "metric", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" } }
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "name": "model_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/MetricCode"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -107,14 +226,34 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["model_version", "metric", "confidence", "empirical_coverage", "n"],
+                    "required": [
+                      "model_version",
+                      "metric",
+                      "confidence",
+                      "empirical_coverage",
+                      "n"
+                    ],
                     "additionalProperties": false,
                     "properties": {
-                      "model_version": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" },
-                      "metric": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" },
-                      "confidence": { "$ref": "../schemas/common.schema.json#/$defs/ConfidenceLevel" },
-                      "empirical_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
-                      "n": { "type": "integer", "minimum": 0, "description": "统计样本数；n 低于阈值时该档位 calibrated=false。" }
+                      "model_version": {
+                        "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+                      },
+                      "metric": {
+                        "$ref": "../schemas/common.schema.json#/$defs/MetricCode"
+                      },
+                      "confidence": {
+                        "$ref": "../schemas/common.schema.json#/$defs/ConfidenceLevel"
+                      },
+                      "empirical_coverage": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "n": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "统计样本数；n 低于阈值时该档位 calibrated=false。"
+                      }
                     }
                   }
                 }
@@ -129,8 +268,12 @@
         "operationId": "subscribeDriftAlert",
         "summary": "登记漂移告警订阅（发布 DriftDetected）",
         "parameters": [
-          { "$ref": "#/components/parameters/XTenantId" },
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -138,31 +281,378 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model_version_of", "channels"],
+                "required": [
+                  "model_version_of",
+                  "channels"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "model_version_of": { "type": "string" },
-                  "channels": { "type": "array", "items": { "type": "string", "enum": ["webhook", "dashboard", "email"] } }
+                  "model_version_of": {
+                    "type": "string"
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "webhook",
+                        "dashboard",
+                        "email"
+                      ]
+                    }
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "订阅已登记。", "content": { "application/json": { "schema": { "type": "object", "required": ["subscription_id"], "properties": { "subscription_id": { "type": "string" } }, "additionalProperties": false } } } },
-          "400": { "$ref": "#/components/responses/ValidationError" }
+          "201": {
+            "description": "订阅已登记。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "subscription_id"
+                  ],
+                  "properties": {
+                    "subscription_id": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/models/{model_version}/gate": {
+      "post": {
+        "operationId": "runRegisterGate",
+        "summary": "注册门禁 G0–G5（T0；短路求值，全过才入册）",
+        "description": "门禁序列按 G0（三元组绑定）→G5（物理一致性）执行，失败即停；通过发布 ModelRegistered，失败发布 ModelGateFailed 且不入册（§5.5）。双口径阈值常量集中定义（B09 §3.3）。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "model_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "feature_set_version",
+                  "dataset_snapshot_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "feature_set_version": {
+                    "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion"
+                  },
+                  "dataset_snapshot_id": {
+                    "$ref": "../schemas/common.schema.json#/$defs/DatasetSnapshotId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "门禁受理；完成事件二选一发布：全过 ModelRegistered / 失败 ModelGateFailed（失败不入册）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/task.schema.json"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "该 model_version 已在注册表中（重复注册）；Problem Details type=/errors/invalid-transition。",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "../schemas/error.schema.json"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/models/{model_version}/shadow/start": {
+      "post": {
+        "operationId": "startShadow",
+        "summary": "开始影子观察（T1；0% 流量只记录不返回）",
+        "description": "守卫：artifact 校验和通过且 feature_set 指纹与 G0 记录一致；观察量 ≥30 请求或 1 个实验回写周期方可推进（回写周期优先于固定天数）。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "model_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "min_requests": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 30
+                  },
+                  "writeback_rounds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "受理；发布 ModelShadowStarted。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/task.schema.json"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "当前 stage ≠ registered；Problem Details type=/errors/invalid-transition（B09 §2.3 白名单）。",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "../schemas/error.schema.json"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/models/{model_version}/canary/start": {
+      "post": {
+        "operationId": "startCanary",
+        "summary": "开始金丝雀灰度（T2；5%→25%→100%）",
+        "description": "守卫：影子对拍差异分布稳定（§16.2 双版本对照，分布突变即阻断，不只看聚合指标）；灰度期间任何 CanaryRun 失败立即冻结比例并回切路由。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "model_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "traffic_percent": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 5,
+                    "description": "初始灰度比例，阶梯 5%→25%→100%（B09 §4）。"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "受理；发布 ModelCanaryStarted。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/task.schema.json"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "当前 stage ≠ shadow；Problem Details type=/errors/invalid-transition。",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "../schemas/error.schema.json"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/models/{model_version}/model-card": {
+      "get": {
+        "operationId": "getModelCard",
+        "summary": "读取模型卡（8 节模板；≥80% 字段由管线自动填充）",
+        "description": "模板 docs/design/B09-PIPELINE-DETAIL-DESIGN.md §5.1；标识三元组/数据声明/门禁表/指标/canary 证据/履历由骨架管线与审计反查自动填充，已知局限与审批人两节人工补录。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XTenantId"
+          },
+          {
+            "name": "model_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "模型卡内容（Markdown 渲染源 + 结构化元数据）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "model_version",
+                    "template_version",
+                    "auto_fill_ratio",
+                    "card_markdown"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model_version": {
+                      "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+                    },
+                    "template_version": {
+                      "type": "string",
+                      "examples": [
+                        "MC-v1.0"
+                      ]
+                    },
+                    "auto_fill_ratio": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "description": "自动填充字段占比（DoD ≥0.80）。"
+                    },
+                    "card_markdown": {
+                      "type": "string",
+                      "description": "模板渲染结果（§5.1 八节）。"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "model_version 不存在或模型卡尚未生成。",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "../schemas/error.schema.json"
+                }
+              }
+            }
+          }
         }
       }
     }
   },
   "components": {
     "parameters": {
-      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
-      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+      "XTenantId": {
+        "name": "X-Tenant-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "$ref": "../schemas/common.schema.json#/$defs/TenantId"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey"
+        }
+      }
     },
     "responses": {
-      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
-      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+      "ValidationError": {
+        "description": "请求体校验失败。",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "../schemas/error.schema.json"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "ABAC 判定拒绝。",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "../schemas/error.schema.json"
+            }
+          }
+        }
+      }
     }
   }
 }

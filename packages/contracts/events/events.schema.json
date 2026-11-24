@@ -381,6 +381,279 @@
         }
       },
       "description": "特征集注册（B07）：训练与服务共用同一特征实现；draft 未注册不可用。"
+    },
+    "ModelRegistered": {
+      "type": "object",
+      "required": [
+        "model_version",
+        "model_version_of",
+        "feature_set_version",
+        "dataset_snapshot_id",
+        "gate_report"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+        },
+        "model_version_of": {
+          "type": "string"
+        },
+        "feature_set_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion",
+          "description": "G0 绑定校验通过的特征集版本（含指纹，B07）。"
+        },
+        "dataset_snapshot_id": {
+          "$ref": "../schemas/common.schema.json#/$defs/DatasetSnapshotId"
+        },
+        "gate_report": {
+          "type": "object",
+          "required": [
+            "passed",
+            "checked_rules",
+            "results"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "checked_rules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "门禁规则 ID 清单（G0–G5 / C1–C3，B09 §3）。"
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "rule_id",
+                  "status"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "rule_id": {
+                    "type": "string",
+                    "examples": [
+                      "G0"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "SKIPPED"
+                    ],
+                    "description": "短路求值：失败即停，未执行项标 SKIPPED。"
+                  }
+                }
+              },
+              "description": "逐项结果全量入 metrics_json 与模型卡（§5.5）。"
+            }
+          }
+        }
+      },
+      "description": "T0 注册（B09 §2.3）：G0–G5 短路求值全过；三元组绑定是第一关。"
+    },
+    "ModelGateFailed": {
+      "type": "object",
+      "required": [
+        "model_version",
+        "model_version_of",
+        "failed_rule",
+        "gate_report"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+        },
+        "model_version_of": {
+          "type": "string"
+        },
+        "failed_rule": {
+          "type": "string",
+          "examples": [
+            "G3"
+          ],
+          "description": "首个失败规则 ID（短路求值停在这里）。"
+        },
+        "gate_report": {
+          "type": "object",
+          "required": [
+            "passed",
+            "checked_rules",
+            "results"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "checked_rules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "门禁规则 ID 清单（G0–G5 / C1–C3，B09 §3）。"
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "rule_id",
+                  "status"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "rule_id": {
+                    "type": "string",
+                    "examples": [
+                      "G0"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "SKIPPED"
+                    ],
+                    "description": "短路求值：失败即停，未执行项标 SKIPPED。"
+                  }
+                }
+              },
+              "description": "逐项结果全量入 metrics_json 与模型卡（§5.5）。"
+            }
+          }
+        }
+      },
+      "description": "门禁失败=不入册（§5.5）；模型卡记失败项，旧版本继续服务。"
+    },
+    "ModelShadowStarted": {
+      "type": "object",
+      "required": [
+        "model_version",
+        "model_version_of",
+        "min_requests",
+        "writeback_rounds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+        },
+        "model_version_of": {
+          "type": "string"
+        },
+        "min_requests": {
+          "type": "integer",
+          "minimum": 1,
+          "examples": [
+            30
+          ],
+          "description": "最低观察量（§17.3：≥30 请求或 1 个实验周期）。"
+        },
+        "writeback_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "examples": [
+            1
+          ],
+          "description": "回写实验轮数节拍（回写周期优先于固定天数，B09 §4）。"
+        }
+      },
+      "description": "T1 影子观察开始：0% 流量只记录不返回；观察量不足不得推进。"
+    },
+    "ModelCanaryStarted": {
+      "type": "object",
+      "required": [
+        "model_version",
+        "model_version_of",
+        "traffic_percent"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+        },
+        "model_version_of": {
+          "type": "string"
+        },
+        "traffic_percent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "examples": [
+            5
+          ],
+          "description": "灰度比例阶梯 5%→25%→100%（B09 §4）。"
+        }
+      },
+      "description": "T2 金丝雀灰度开始；CanaryRun 失败即冻结比例回切路由。"
+    },
+    "ModelDeprecated": {
+      "type": "object",
+      "required": [
+        "model_version",
+        "model_version_of",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+        },
+        "model_version_of": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "drift-auto",
+            "manual-retire",
+            "canary-terminated"
+          ],
+          "description": "漂移自动回滚 / 人工淘汰（需审批人）/ canary 期间人工终止。"
+        },
+        "approver": {
+          "type": "string",
+          "description": "人工路径必填；自动路径缺省。"
+        }
+      },
+      "description": "T4/T5 退役（终态）。"
+    },
+    "ModelRolledBack": {
+      "type": "object",
+      "required": [
+        "model_version",
+        "rolled_back_to",
+        "trigger"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion"
+        },
+        "rolled_back_to": {
+          "$ref": "../schemas/common.schema.json#/$defs/ModelVersion",
+          "description": "回切目标：同 type 仍处 production 的上一版本。"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "drift-auto",
+            "canary-failure",
+            "manual"
+          ]
+        }
+      },
+      "description": "回滚=路由回切非状态迁移（B09 §2.4），双版本对照（§16.2 第三层）的基础。"
     }
   }
 }

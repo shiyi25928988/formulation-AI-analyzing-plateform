@@ -777,6 +777,7 @@ knowledge-svc（RAG / 图谱）整体异常按 L2 同级处置：暂停知识问
 | `RecommendationIssued` | active-learning-svc | experiment-svc、审计 | 至少一次 + 幂等（R2.3 契约包补录：闭环状态机起点事件） |
 | `FeatureSetRegistered` | model-lifecycle-svc | prediction-svc、审计 | 至少一次 + 幂等 |
 | `ModelTrained` / `ModelPromoted` | model-lifecycle-svc | 在线推理、审计、通知 | 至少一次 + 幂等 |
+| `ModelRegistered` / `ModelGateFailed` / `ModelShadowStarted` / `ModelCanaryStarted` / `ModelDeprecated` / `ModelRolledBack` | model-lifecycle-svc | 在线推理（路由）、审计 | 至少一次 + 幂等（生命周期六条迁移白名单，B09 §2.3；回滚=路由回切见 §16.2） |
 | `CanaryFailed` | model-lifecycle-svc | 通知、告警、灰度回退 | 至少一次 + 幂等 |
 | `DriftDetected` | 监控 | 训练编排、告警 | 至少一次，允许重复 |
 | `ExportRequested` | BFF | 审批、脱敏、审计 | 有效恰好一次（幂等键 + 审批状态机实现） |

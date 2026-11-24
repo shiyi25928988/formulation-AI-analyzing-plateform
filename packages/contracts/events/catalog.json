@@ -107,6 +107,80 @@
       "note": "消费者原文含「在线推理、审计、通知」；在线推理即 prediction-svc 双缓冲加载（§15.2）。"
     },
     {
+      "type": "ModelRegistered",
+      "publisher": "model-lifecycle-svc",
+      "consumers": [
+        "prediction-svc",
+        "auth-audit-svc",
+        "knowledge-svc"
+      ],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelRegistered",
+      "architecture_ref": "ARCHITECTURE.md §5.5 / §16.4（B09 §2.3 T0）",
+      "note": "注册门禁 G0–G5 全过后入册（registered）。门禁失败不发本事件，发 ModelGateFailed 且不入册。"
+    },
+    {
+      "type": "ModelGateFailed",
+      "publisher": "model-lifecycle-svc",
+      "consumers": [
+        "auth-audit-svc",
+        "knowledge-svc"
+      ],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelGateFailed",
+      "architecture_ref": "ARCHITECTURE.md §5.5 / §16.4（B09 §2.3 T0 失败处置）",
+      "note": "门禁失败=不入册（§5.5 口径，不设 REJECTED 终态污染注册表）；失败项写入模型卡留痕，旧版本继续服务。"
+    },
+    {
+      "type": "ModelShadowStarted",
+      "publisher": "model-lifecycle-svc",
+      "consumers": [
+        "prediction-svc",
+        "auth-audit-svc"
+      ],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelShadowStarted",
+      "architecture_ref": "ARCHITECTURE.md §17.3 / §16.4（B09 §2.3 T1）",
+      "note": "影子流量观察期开始（0% 流量只记录不返回）；观察量不足不得推进（回写周期优先于固定天数）。"
+    },
+    {
+      "type": "ModelCanaryStarted",
+      "publisher": "model-lifecycle-svc",
+      "consumers": [
+        "prediction-svc",
+        "auth-audit-svc"
+      ],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelCanaryStarted",
+      "architecture_ref": "ARCHITECTURE.md §16.2 / §16.4（B09 §2.3 T2）",
+      "note": "金丝雀灰度开始（5%→25%→100%）；期间任何 CanaryRun 失败立即冻结比例并回切路由。"
+    },
+    {
+      "type": "ModelDeprecated",
+      "publisher": "model-lifecycle-svc",
+      "consumers": [
+        "prediction-svc",
+        "auth-audit-svc",
+        "knowledge-svc"
+      ],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelDeprecated",
+      "architecture_ref": "ARCHITECTURE.md §5.5 / §16.4（B09 §2.3 T4/T5）",
+      "note": "版本退役（终态）：漂移自动回滚或人工淘汰；同 type 允许双 production 并行，路由回切由本事件+ModelRolledBack 表达。"
+    },
+    {
+      "type": "ModelRolledBack",
+      "publisher": "model-lifecycle-svc",
+      "consumers": [
+        "prediction-svc",
+        "auth-audit-svc"
+      ],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelRolledBack",
+      "architecture_ref": "ARCHITECTURE.md §16.2 / §16.4（B09 §2.4）",
+      "note": "回滚=路由回切非状态迁移：当前 production 转 deprecated，推理路由切回仍处 production 的上一版本（双版本对照基础）。"
+    },
+    {
       "type": "FeatureSetRegistered",
       "publisher": "model-lifecycle-svc",
       "consumers": [
