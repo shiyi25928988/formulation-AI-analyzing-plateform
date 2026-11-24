@@ -273,7 +273,8 @@ class SkeletonPipeline:
                               round(v + self.calib[code][lv], 3)]
                          for lv in INTERVAL_LEVELS}
             result["predictions"].append({
-                "metric": code, "value": round(v, 3),
+                "metric": code, "unit": METRICS[code]["unit"],
+                "value": round(v, 3),
                 "intervals": intervals, "ood_level": ood,
                 "advisory_only": ood == "advisory"})
         self.store.insert("prediction_log", {
