@@ -251,6 +251,9 @@
 | `318d31e` | `feat(features): add versioned feature factory with approval registry (B07)` —— 特征单一来源：版本化定义 + 内容指纹 + 统一 transform + 审批注册表（7 文件 / +649 行，含契约 FeatureSetRegistered 补录与骨架全链路接线） |
 | `c1e1771` | `docs: sync R2.5 feature factory into architecture set (B07)` —— §16.4 加行 + 迭代记录 R2.5 + CHANGELOG/README 同步 |
 | `72da194` | `docs: add B09 pipeline detail design (train-gate-register-canary + model card)` —— 训练→门禁→注册→灰度流水线详设 + 模型卡模板（状态机以 DDL 为权威、六条迁移白名单、G0–G5 + C1–C3 门禁、模型卡 8 节） |
+| `e573453` | `feat(contracts): add lifecycle events and gate/shadow/canary/model-card APIs (B09)` —— 契约补录：6 生命周期事件（目录 13→19 + payload $defs）+ 4 API（model-lifecycle-svc 5→9 paths）+ gate_report 共享结构 + §16.4 表行 |
+| `62e8cc6` | `feat(lifecycle): add model lifecycle store and gate engine (B09)` —— 生命周期实现轮第一件：五态状态机 + 六条迁移白名单（_check/_apply 分离防半迁移）+ G0–G5/C1–C3 门禁引擎 + 双口径阈值常量（lifecycle 24 + skeleton 21 + contracts 18 项测试全过） |
+| `817da34` | `docs: sync R2.6 lifecycle store and gates into iteration docs (B09)` —— 迭代记录 R2.6b + B09 状态更新 + CHANGELOG 同步 |
 
 ---
 
