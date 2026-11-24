@@ -8,7 +8,7 @@
 
 ## 当前状态
 
-> **R2 进行中**：核心表 DDL 与离线回放框架已落地，walking skeleton（B03）为 R2 收尾目标。
+> **R2 进行中**：核心表 DDL、离线回放框架与 walking skeleton 已落地（R2 三条 P0 全部完成），契约定义为下一步（B04）。
 
 | 项目 | 状态 |
 |---|---|
@@ -17,7 +17,7 @@
 | 领域模型 / DDL | **已落地**：`db/migrations/001_init_schema.sql`（24 表 / 10 枚举 / RLS / 状态机触发器，静态校验通过；Docker 执行验证待办） |
 | 离线回放框架 | **已落地**：`tests/replay/`（零依赖纯标准库；幸存者偏差诊断 + 三基线 + bootstrap CI；12 种子合成回放基线报告已产出） |
 | 服务与 API 契约 | 已定义边界与响应格式，契约文件待落地（B04） |
-| MVP 代码 | walking skeleton 待做（B03，R2 收尾目标） |
+| Walking skeleton | **已打通**：`skeleton/`（§18.2 十步端到端 + 21 项断言全过；两轮闭环演示推荐变化与审计反查命中；见 [`skeleton/README.md`](skeleton/README.md)） |
 | CI / 部署清单 | 换行规范已落地，静态守护待建（B13） |
 
 ---
@@ -26,16 +26,17 @@
 
 | 文档 | 内容 |
 |---|---|
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构总纲 v2.1。§1–§14：约束与质量属性、分层与三条主线、领域模型、服务契约、AI 工程化、闭环状态机、安全矩阵、部署与 SLO、19 条 ADR、路线与验收；§15–§18：运行期视图与时序、FMEA 与静默失败、离线回放验证、开发视图与演进治理 |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构总纲 v2.1。§1–§14：约束与质量属性、分层与三条主线、领域模型、服务契约、AI 工程化、闭环状态机、安全矩阵、部署与 SLO、20 条 ADR、路线与验收；§15–§18：运行期视图与时序、FMEA 与静默失败、离线回放验证、开发视图与演进治理 |
 | [`docs/architecture/ITERATION_BACKLOG.md`](docs/architecture/ITERATION_BACKLOG.md) | 迭代原则、完成定义、按优先级排序的 14 项待办、迭代记录与下一轮目标 |
 | [`docs/architecture/LLM-ACCESS-HANDOFF.md`](docs/architecture/LLM-ACCESS-HANDOFF.md) | 一页摘要：私有 LLM 接入从 ADR-12 到 ADR-19 的衔接口径（触发条件、预埋契约、选型档位、红线、二期待办） |
 | [`docs/design/prototype-v0.1.html`](docs/design/prototype-v0.1.html) | 界面原型 v0.1（一期 MVP 范围）：5 个界面 + 设计令牌 + Figma 交接标注；二期屏灰显对应 ADR-12 范围冻结 |
 | [`docs/design/FEATURE-DESIGN-v0.1.md`](docs/design/FEATURE-DESIGN-v0.1.md) | 功能点设计 v0.1（已评审）：架构能力承接清单，7 项一期功能（校准追踪 / 版本对比 / 批量筛选 / 质量看板 / 审批工作台 / 通知中心 / 批次推荐与 Pareto 简化视图）+ 3 项二期候选池登记 |
 | [`docs/design/F01-F02-DETAIL-DESIGN.md`](docs/design/F01-F02-DETAIL-DESIGN.md) | F1 校准追踪 + F2 版本对比的工程详设（已评审）：计算口径、API 契约、数据与物化方案、组件与状态、边界与验收 |
 | [`tests/replay/README.md`](tests/replay/README.md) | 离线回放框架使用说明：§17.2 全口径实现、两种回放模式、判读规则与升级路径 |
+| [`skeleton/README.md`](skeleton/README.md) | Walking skeleton（B03）：§18.2 十步端到端链路逐条对照、镜像不变量清单与简化升级路径 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 
-架构文档附录 B 现含 **1 项已定决策与 10 项待客户确认的开放问题**。已定决策：「历史是否保留失败与取消记录」依据行业证据（失败实验极少被数字化，Raccuglia et al., *Nature* 2016）按「历史库大概率不完整」处理——离线回放内置幸存者偏差诊断，新采集数据强制全记录失败与取消。开放问题中「历史数据可用样本量」仍决定模型选型是否调整。
+架构文档附录 B 现含 **2 项已定决策与 10 项待客户确认的开放问题**。已定决策一：「历史是否保留失败与取消记录」依据行业证据（失败实验极少被数字化，Raccuglia et al., *Nature* 2016）按「历史库大概率不完整」处理——离线回放内置幸存者偏差诊断，新采集数据强制全记录失败与取消。已定决策二：「图谱存储选型」定论 Neo4j 社区版 + 四条绕行约束（ADR-20），配方主数据与血缘强制留在 PostgreSQL + RLS。开放问题中「历史数据可用样本量」仍决定模型选型是否调整。
 
 ---
 
