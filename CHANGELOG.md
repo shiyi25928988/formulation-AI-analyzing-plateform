@@ -189,6 +189,8 @@
 | `7aa94cf` | `docs: add ADR-20 Neo4j CE selection and sync R2.2 walking-skeleton docs` —— ADR-20 图谱存储选型落档（8 处）+ R2.2 文档同步 |
 | `9cba6f9` | `feat(contracts): add service contracts - 9 OpenAPI specs, event catalog, validator (B04)` —— 契约包：九服务 OpenAPI 3.1 + 7 共享 schema + 12 事件目录/payload + 零依赖校验器 + 18 项契约测试（21 文件 / +2783 行） |
 | `5419646` | `docs: sync R2.3 contract package into architecture set (B04)` —— §4.3/§16.4 契约包指针 + 迭代记录 R2.3 + CHANGELOG/README 同步 |
+| `e74ca5d` | `feat(canary): add semantic assertions and canary formula set with fault injection (B06)` —— 语义断言五类 + 金丝雀集 v1.0（12 条合成配方）+ 八类故障注入拦截 100% + 运行器/审计事件 + 16 项测试（9 文件 / +707 行） |
+| `0ac4d47` | `docs: sync R2.4 canary acceptance into iteration docs (B06)` —— 迭代记录 R2.4 + CHANGELOG/README 同步 |
 
 ---
 
