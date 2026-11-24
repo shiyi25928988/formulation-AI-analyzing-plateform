@@ -8,7 +8,7 @@
 
 ## 当前状态
 
-> **R2 进行中**：核心表 DDL、离线回放框架、walking skeleton（三条 P0）、服务契约包（B04）、语义断言 + 金丝雀配方集（B06）与版本化特征工厂（B07）已落地；下一目标 B09 训练→门禁→注册→灰度流水线。
+> **R2 进行中**：核心表 DDL、离线回放框架、walking skeleton（三条 P0）、服务契约包（B04）、语义断言 + 金丝雀配方集（B06）、版本化特征工厂（B07）已落地；B09 流水线详设完成（`docs/design/B09-PIPELINE-DETAIL-DESIGN.md`），实现待办。
 
 | 项目 | 状态 |
 |---|---|
@@ -39,6 +39,7 @@
 | [`packages/contracts/README.md`](packages/contracts/README.md) | 服务契约包（B04）：九服务 OpenAPI 3.1 + 事件目录/信封 schema + 校验器五类检查与红线口径速查 |
 | [`canary/README.md`](canary/README.md) | 语义断言 + 金丝雀配方集（B06）：断言类别与静默失败来源对照、金丝雀覆盖剖面、八类故障注入拦截证据与生产集成路径 |
 | [`features/README.md`](features/README.md) | 版本化特征工厂（B07）：口径表（版本/指纹/变换/审批）、13 项验收测试覆盖与生产集成路径 |
+| [`docs/design/B09-PIPELINE-DETAIL-DESIGN.md`](docs/design/B09-PIPELINE-DETAIL-DESIGN.md) | 训练→门禁→注册→灰度流水线详设（B09）：状态机白名单、G0–G5/C1–C3 门禁序列、模型卡模板与 ≥80% 自动填充来源表 |
 | [`docs/architecture/B04-CHANGE-NOTES.md`](docs/architecture/B04-CHANGE-NOTES.md) | R2.3 变更说明：契约包交付清单、10 条关键契约决策、目录补录澄清、契约自冲突修正与验收结果 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 

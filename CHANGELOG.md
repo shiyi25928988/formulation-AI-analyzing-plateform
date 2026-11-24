@@ -5,6 +5,18 @@
 
 ---
 
+## [R2.6 进行中 · B09 详设] · 2026-11-24
+
+**主题**：训练→门禁→注册→灰度流水线详设 + 模型卡模板（`docs/design/B09-PIPELINE-DETAIL-DESIGN.md`），实现轮待办。
+
+- 状态机裁定：DDL `model_stage` 枚举（registered/shadow/canary/production/deprecated）为唯一权威；门禁失败=不入册 + `ModelGateFailed` 留痕，不设 REJECTED 终态
+- 六条迁移白名单（守卫/事件/失败处置逐条定义）；回滚=路由回切非状态迁移，允许同 type 双 production 并行（双版本对照基础）
+- G0–G5 注册门禁（短路求值）+ C1–C3 canary 门禁；C1 直接引用 B06 `run_canary`（DoD：金丝雀作为 canary 阶段门禁）
+- 模型卡 8 节模板 + 字段级填充来源表（约 83% 字段骨架可自动填充，DoD 口径 ≥80% 达成）
+- 契约扩展清单：6 事件 + 4 API + model_registry 迁移白名单触发器（实现轮补录）
+
+---
+
 ## [R2.5 交付] · 2026-11-24
 
 **主题**：B07 版本化特征工厂——特征定义单一事实来源，落实 ADR-04 防 training-serving skew。
