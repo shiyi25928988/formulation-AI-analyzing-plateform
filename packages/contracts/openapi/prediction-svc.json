@@ -1,0 +1,180 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "prediction-svc",
+    "version": "1.0.0",
+    "description": "配方特征化、多任务推理、不确定性 + 解释生成（§4.1）。无状态；不做优化、不写库。契约红线：不确定性必返、provenance 必返、severe OOD 拒答不返回数值。带解释在线预测总预算 2s P95（§15.2），explain 是可降级项（deferred）。",
+    "x-service-boundary": "不负责：优化、写库"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/prediction" }],
+  "paths": {
+    "/predict": {
+      "post": {
+        "operationId": "predictSingle",
+        "summary": "单配方实时预测（同步，< 2s P95）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PredictRequest" },
+              "examples": {
+                "canonical": {
+                  "summary": "§4.3 示例",
+                  "value": {
+                    "formula": {
+                      "components": [
+                        { "material_id": "MAT-0001", "phr": 100.0, "role": "resin" },
+                        { "material_id": "MAT-0002", "phr": 12.0, "role": "curing_agent" }
+                      ],
+                      "process": { "cure_temp_c": 150.0, "cure_time_min": 120.0, "post_cure": true }
+                    },
+                    "targets": ["tg_like", "lap_shear_like"],
+                    "options": { "explain": true, "calibrate": true, "ood_check": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "预测成功。severe OOD 的指标按拒答口径返回（value/intervals/explanation 缺省）。",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PredictResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/IdempotencyConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/Internal" }
+        }
+      }
+    },
+    "/predict/batch": {
+      "post": {
+        "operationId": "predictBatch",
+        "summary": "批量虚拟筛选（异步，10⁴–10⁶ 条，§4.2）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["candidate_set_ref", "targets"],
+                "additionalProperties": false,
+                "properties": {
+                  "candidate_set_ref": { "type": "string", "description": "候选集对象存储键（MinIO），避免请求体携带 10⁶ 条。" },
+                  "targets": { "type": "array", "minItems": 1, "items": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" } },
+                  "options": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "explain": { "type": "boolean", "default": false, "description": "批量模式默认关解释（成本）。" },
+                      "calibrate": { "type": "boolean", "default": true }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "任务受理，batch 队列（§15.2 队列隔离）。",
+            "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/tasks/{task_id}": {
+      "get": {
+        "operationId": "getTask",
+        "summary": "查询异步任务状态（批量预测共用）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "task_id", "in": "path", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TaskId" } }
+        ],
+        "responses": {
+          "200": { "description": "任务视图。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": {
+        "name": "X-Tenant-Id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" },
+        "description": "租户作用域（网关校验后透传；RLS / ABAC 作用域键）。"
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" },
+        "description": "所有 POST 必带（§4.3）。重放返回上次结果并标 idempotency_replay。"
+      }
+    },
+    "schemas": {
+      "PredictRequest": {
+        "type": "object",
+        "required": ["formula", "targets"],
+        "additionalProperties": false,
+        "properties": {
+          "formula": { "$ref": "../schemas/common.schema.json#/$defs/FormulaSpec" },
+          "targets": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" } },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "explain": { "type": "boolean", "default": true, "description": "true 时解释可能 deferred（§15.2）。" },
+              "calibrate": { "type": "boolean", "default": true, "description": "conformal 区间开关仅控制解释性字段；三档区间结构仍必返（未校准档 calibrated=false）。" },
+              "ood_check": { "type": "boolean", "default": true, "description": "OOD 检查不可关闭（红线）：false 仅省略 advisory 提示文案，ood_level 仍必返。" }
+            }
+          }
+        }
+      },
+      "PredictResponse": {
+        "type": "object",
+        "required": ["request_id", "predictions", "provenance"],
+        "additionalProperties": false,
+        "properties": {
+          "request_id": { "$ref": "../schemas/common.schema.json#/$defs/Uuid" },
+          "predictions": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "../schemas/prediction-result.schema.json" }
+          },
+          "provenance": { "$ref": "../schemas/provenance.schema.json" }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败（阻断级 QC 子集，§15.2）。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Unauthorized": { "description": "未认证。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝（§8.2）。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "NotFound": { "description": "资源不存在。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "IdempotencyConflict": { "description": "同幂等键请求指纹不同（§4.3）。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "RateLimited": { "description": "按租户限流（§15.2）。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Internal": { "description": "内部错误；不得返回半可信数值，错误响应不携带任何预测结果。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

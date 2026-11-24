@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/interval.schema.json",
+  "title": "conformal 校准区间（§5.2 三档）",
+  "description": "分位与置信标称必须数学自洽：0.90 → p5/p95，0.70 → p15/p85，0.50 → p25/p75。未校准模型不得返回本结构（红线上报）。对应数据面口径：calib_stat 物化表（F1 详设 / docs/design/F01-F02-DETAIL-DESIGN.md）。",
+  "type": "object",
+  "required": ["confidence", "p_low", "p_high"],
+  "additionalProperties": false,
+  "properties": {
+    "confidence": { "$ref": "common.schema.json#/$defs/ConfidenceLevel" },
+    "p_low": { "type": "number", "description": "下分位点：0.9→p5、0.7→p15、0.5→p25。" },
+    "p_high": { "type": "number", "description": "上分位点：0.9→p95、0.7→p85、0.5→p75。" },
+    "calibrated": { "type": "boolean", "description": "false 表示该档位样本不足未校准，客户端不得展示区间（§5.2 校准降级）。" }
+  }
+}

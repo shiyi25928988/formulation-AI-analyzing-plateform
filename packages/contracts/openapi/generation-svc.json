@@ -1,0 +1,122 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "generation-svc",
+    "version": "1.0.0",
+    "description": "条件生成、逆向候选、可执行性过滤（§4.1）。任务态。红线：不保证性能达标——所有生成候选必须经 prediction-svc 预测验证后才可进推荐流；LLM 参与仅限文本层（ADR-19：LLM 永不生成配方数值）。生成式能力按 §11 为三期扩展，一期仅提供可执行性过滤。",
+    "x-service-boundary": "不负责：性能达标承诺（须经预测验证）"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/generation" }],
+  "paths": {
+    "/candidates/filter": {
+      "post": {
+        "operationId": "filterExecutableCandidates",
+        "summary": "可执行性过滤（一期，同步批处理）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["candidates_ref", "constraints_ref"],
+                "additionalProperties": false,
+                "properties": {
+                  "candidates_ref": { "type": "string", "description": "候选配方集引用（对象存储键）。" },
+                  "constraints_ref": { "type": "string", "description": "约束库版本引用。" },
+                  "checks": {
+                    "type": "array",
+                    "items": { "type": "string", "enum": ["material_existence", "ratio_feasibility", "process_feasibility", "safety_rule"] },
+                    "description": "可执行性检查项：原材料存在性、配比可行性、工艺可行性、安全规则。"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "过滤结果（含淘汰原因，负结果留档）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kept", "rejected"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "kept": { "type": "array", "items": { "type": "string", "description": "candidate_id" } },
+                    "rejected": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["candidate_id", "reason"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "candidate_id": { "type": "string" },
+                          "reason": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/candidates/generate": {
+      "post": {
+        "operationId": "generateCandidates",
+        "summary": "条件生成候选（三期，异步；一期返回 501）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["condition"],
+                "additionalProperties": false,
+                "properties": {
+                  "condition": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "target_metric": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" },
+                      "target_min": { "type": "number" },
+                      "material_system": { "type": "string", "description": "材料体系限定。" }
+                    }
+                  },
+                  "count": { "type": "integer", "minimum": 1, "maximum": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "三期范围（§11）。契约先固化以锁接口形状，实现按演进路线推进。",
+            "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

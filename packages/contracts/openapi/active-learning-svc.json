@@ -1,0 +1,124 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "active-learning-svc",
+    "version": "1.0.0",
+    "description": "信息增益计算、下一批实验点推荐、批次去冗余（§4.1）。任务态；不决定实验排程（排程归 experiment-svc）。发布 RecommendationIssued 事件（§16.4 目录）。策略有效性由离线回放背书（§17.2：相对基线轮次下降 ≥30% 为门禁）。",
+    "x-service-boundary": "不负责：实验排程决策"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/active-learning" }],
+  "paths": {
+    "/recommend": {
+      "post": {
+        "operationId": "recommendNextBatch",
+        "summary": "推荐下一批实验点（异步，分钟级）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["objective", "batch_size", "candidate_pool_ref", "model_version"],
+                "additionalProperties": false,
+                "properties": {
+                  "objective": {
+                    "type": "object",
+                    "required": ["metric", "target_min"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "metric": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" },
+                      "target_min": { "type": "number", "description": "目标区间下界（§17.2 收敛口径）。" }
+                    }
+                  },
+                  "batch_size": { "type": "integer", "minimum": 1, "maximum": 24 },
+                  "candidate_pool_ref": { "type": "string", "description": "候选池引用：由约束库在 T0 重建，不从结果反推（§17.2 陷阱 3）。" },
+                  "model_version": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" },
+                  "feature_set_version": { "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion" },
+                  "strategy": {
+                    "type": "string",
+                    "enum": ["active_ucb", "active_ei", "doe_latin", "doe_full_fractional"],
+                    "default": "active_ucb",
+                    "description": "采集函数/DoE 策略。doe_* 为冷启动模式（无训练数据时）。"
+                  },
+                  "diversity_constraint": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "min_distance": { "type": "number", "description": "批次内最小特征距离（去冗余，§4.1）。" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "任务受理（batch 队列）。完成后发布 RecommendationIssued。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/recommendations/{batch_id}": {
+      "get": {
+        "operationId": "getRecommendationBatch",
+        "summary": "获取推荐批次结果（含 provenance 与区间）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "batch_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "推荐批次。每个候选点必返 provenance + 三档区间 + OOD 标记。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["batch_id", "strategy", "candidates", "provenance"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "batch_id": { "type": "string" },
+                    "strategy": { "type": "string" },
+                    "candidates": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "required": ["candidate_id", "formula", "expected_gain", "ood_level"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "candidate_id": { "type": "string" },
+                          "formula": { "$ref": "../schemas/common.schema.json#/$defs/FormulaSpec" },
+                          "expected_gain": { "type": "number", "description": "采集函数值（EI/UCB）。" },
+                          "ood_level": { "$ref": "../schemas/common.schema.json#/$defs/OodLevel", "description": "推荐点必须披露 OOD 等级；severe 点由前端强制复核确认后才可进 REVIEWED。" },
+                          "intervals": { "type": "array", "items": { "$ref": "../schemas/interval.schema.json" } }
+                        }
+                      }
+                    },
+                    "provenance": { "$ref": "../schemas/provenance.schema.json" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "NotFound": { "description": "批次不存在。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

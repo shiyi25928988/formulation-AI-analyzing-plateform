@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/envelope.schema.json",
+  "title": "事件统一信封（CloudEvents 风格，§16.4 / ADR-16）",
+  "type": "object",
+  "required": ["id", "source", "type", "spec_version", "time", "tenant_id", "correlation_id", "idempotency_key", "schema_version", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/Uuid", "description": "事件唯一 ID（信封级）。" },
+    "source": { "type": "string", "description": "发布者服务名，须为 §4.1 九服务之一。" },
+    "type": { "type": "string", "description": "事件类型，须在 events/catalog.json 注册。" },
+    "spec_version": { "type": "string", "const": "1.0", "description": "信封自身版本（§16.4）。" },
+    "time": { "$ref": "common.schema.json#/$defs/Iso8601" },
+    "tenant_id": { "$ref": "common.schema.json#/$defs/TenantId" },
+    "correlation_id": { "$ref": "common.schema.json#/$defs/Uuid", "description": "链路关联 ID，跨服务追踪（§8.3 审计）。" },
+    "idempotency_key": { "type": "string", "minLength": 16, "description": "幂等键 = (tenant_id, type, aggregate_id, aggregate_version) 的规范序列化（§16.4）。" },
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$", "description": "data payload 的 schema 版本；消费者需兼容至少两个版本（§16.4）。" },
+    "data": { "type": "object", "description": "事件负载，按 type 对应 events.schema.json 的 $defs 校验。" }
+  }
+}

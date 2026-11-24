@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/provenance.schema.json",
+  "title": "溯源三元组（§4.3 / §3.5，必返）",
+  "description": "任何预测/推荐响应必返且写入审计日志。缺 provenance 的预测响应视为契约违规（红线）。model_version + feature_set_version + dataset_snapshot_id 三元组缺一不可。",
+  "type": "object",
+  "required": ["model_version", "feature_set_version", "dataset_snapshot_id", "served_at"],
+  "additionalProperties": false,
+  "properties": {
+    "model_version": { "$ref": "common.schema.json#/$defs/ModelVersion" },
+    "feature_set_version": { "$ref": "common.schema.json#/$defs/FeatureSetVersion" },
+    "dataset_snapshot_id": { "$ref": "common.schema.json#/$defs/DatasetSnapshotId" },
+    "served_at": { "$ref": "common.schema.json#/$defs/Iso8601" },
+    "registry_id": { "type": "string", "description": "model_registry 注册记录 ID，供审计反查（§5.5）。" }
+  }
+}

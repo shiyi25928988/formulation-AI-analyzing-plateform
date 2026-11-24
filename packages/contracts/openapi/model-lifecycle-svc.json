@@ -1,0 +1,168 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "model-lifecycle-svc",
+    "version": "1.0.0",
+    "description": "训练编排、评估门禁、注册、灰度、回滚、漂移监控（§4.1 / §5.5）。控制面，不承载在线流量。校准统计 /calibration/* 归本服务（F1 详设：docs/design/F01-F02-DETAIL-DESIGN.md）。模型生产版本指针切换为强一致（§16.5）；训练绝不自动发布（§15.2）。",
+    "x-service-boundary": "不负责：在线推理流量"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/model-lifecycle" }],
+  "paths": {
+    "/training/runs": {
+      "post": {
+        "operationId": "startTrainingRun",
+        "summary": "启动训练/重训（异步，GPU 队列；消费 DatasetSnapshotFrozen/DataAccepted 触发或手动）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["model_version_of", "dataset_snapshot_id", "feature_set_version"],
+                "additionalProperties": false,
+                "properties": {
+                  "model_version_of": { "type": "string", "description": "逻辑模型名。" },
+                  "dataset_snapshot_id": { "$ref": "../schemas/common.schema.json#/$defs/DatasetSnapshotId" },
+                  "feature_set_version": { "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion" },
+                  "retrain_of": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion", "description": "重训基线版本；门禁按 §5.5 对照。" },
+                  "targets": { "type": "array", "minItems": 1, "items": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "任务受理（train 队列，§15.2）。完成后发布 ModelTrained。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/models/{model_version}/promote": {
+      "post": {
+        "operationId": "promoteModel",
+        "summary": "模型晋升（门禁通过 + 影子观察后；生产指针切换强一致）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "name": "model_version", "in": "path", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["gate_report_ref"],
+                "additionalProperties": false,
+                "properties": {
+                  "gate_report_ref": { "type": "string", "description": "§5.5 门禁报告引用（固定评估集 + golden set + 金丝雀结果）。" },
+                  "shadow": { "type": "boolean", "default": true, "description": "true = 先影子流量观察（§17.3），观察期按实验回写周期设定。" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "晋升受理；发布 ModelPromoted。双缓冲加载切版本不留空窗（§15.2）。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "409": { "description": "门禁未通过（§5.5）；Problem Details type=/errors/gate-failed。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/models/{model_version}/rollback": {
+      "post": {
+        "operationId": "rollbackModel",
+        "summary": "回滚生产版本（消费 CanaryFailed 后执行或手动触发）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "name": "model_version", "in": "path", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" } }
+        ],
+        "responses": {
+          "200": { "description": "生产指针已切回（强一致，§16.5）。", "content": { "application/json": { "schema": { "$ref": "../schemas/provenance.schema.json" } } } },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/calibration/stats": {
+      "get": {
+        "operationId": "getCalibrationStats",
+        "summary": "校准追踪统计（F1：/calibration/* 归本服务）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "model_version", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" } },
+          { "name": "metric", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "校准统计（calib_stat 物化表口径）：按档位的经验覆盖率与标称覆盖率偏差。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["model_version", "metric", "confidence", "empirical_coverage", "n"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "model_version": { "$ref": "../schemas/common.schema.json#/$defs/ModelVersion" },
+                      "metric": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" },
+                      "confidence": { "$ref": "../schemas/common.schema.json#/$defs/ConfidenceLevel" },
+                      "empirical_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+                      "n": { "type": "integer", "minimum": 0, "description": "统计样本数；n 低于阈值时该档位 calibrated=false。" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/drift/subscribe": {
+      "post": {
+        "operationId": "subscribeDriftAlert",
+        "summary": "登记漂移告警订阅（发布 DriftDetected）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["model_version_of", "channels"],
+                "additionalProperties": false,
+                "properties": {
+                  "model_version_of": { "type": "string" },
+                  "channels": { "type": "array", "items": { "type": "string", "enum": ["webhook", "dashboard", "email"] } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "订阅已登记。", "content": { "application/json": { "schema": { "type": "object", "required": ["subscription_id"], "properties": { "subscription_id": { "type": "string" } }, "additionalProperties": false } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

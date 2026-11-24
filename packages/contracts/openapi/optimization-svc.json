@@ -1,0 +1,187 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "optimization-svc",
+    "version": "1.0.0",
+    "description": "多目标优化、Pareto 前沿、约束检查（§4.1）。任务态；不直接调模型——推理一律经 prediction-svc（边界原则）。优化为异步任务（分钟级迭代搜索，§4.2）。一期范围按 §11 / ADR-12：Pareto 对比为一期功能（F10），生成式优化为三期。",
+    "x-service-boundary": "不负责：直接调模型（经 prediction-svc）"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/optimization" }],
+  "paths": {
+    "/pareto/run": {
+      "post": {
+        "operationId": "runParetoOptimization",
+        "summary": "启动多目标优化任务（异步）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["objectives", "constraints_ref", "feature_set_version"],
+                "additionalProperties": false,
+                "properties": {
+                  "objectives": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "items": {
+                      "type": "object",
+                      "required": ["metric", "direction"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "metric": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" },
+                        "direction": { "type": "string", "enum": ["maximize", "minimize"] },
+                        "target_min": { "type": "number", "description": "验收阈值（可选；如 tg ≥ 95）。" }
+                      }
+                    }
+                  },
+                  "constraints_ref": { "type": "string", "description": "约束库版本引用（质量规则 + 工艺边界，§3.3）。" },
+                  "feature_set_version": { "$ref": "../schemas/common.schema.json#/$defs/FeatureSetVersion" },
+                  "search_budget": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "max_evaluations": { "type": "integer", "minimum": 100, "description": "推理调用预算（防高维退化，§5.3）。" },
+                      "max_runtime_s": { "type": "integer", "minimum": 60 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "任务受理（batch 队列）。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/pareto/runs/{run_id}/front": {
+      "get": {
+        "operationId": "getParetoFront",
+        "summary": "获取 Pareto 前沿（含 provenance，前端 F10 版本对比）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "run_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "前沿候选点列表。每点携带完整 provenance 与三档区间。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["run_id", "points", "provenance"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "run_id": { "type": "string" },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["candidate_id", "formula", "objectives"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "candidate_id": { "type": "string" },
+                          "formula": { "$ref": "../schemas/common.schema.json#/$defs/FormulaSpec" },
+                          "objectives": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["metric", "value", "ood_level", "intervals"],
+                              "additionalProperties": false,
+                              "properties": {
+                                "metric": { "$ref": "../schemas/common.schema.json#/$defs/MetricCode" },
+                                "value": { "type": "number" },
+                                "ood_level": { "$ref": "../schemas/common.schema.json#/$defs/OodLevel" },
+                                "intervals": { "type": "array", "items": { "$ref": "../schemas/interval.schema.json" } }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "provenance": { "$ref": "../schemas/provenance.schema.json" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/constraints/check": {
+      "post": {
+        "operationId": "checkConstraints",
+        "summary": "约束检查（同步，轻量，< 200ms）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["formula"],
+                "additionalProperties": false,
+                "properties": { "formula": { "$ref": "../schemas/common.schema.json#/$defs/FormulaSpec" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "检查结果：violations 为空 = 通过。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["passed", "violations"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "passed": { "type": "boolean" },
+                    "violations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["rule_id", "severity"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "rule_id": { "type": "string", "description": "质量规则 ID（§3.3）。" },
+                          "severity": { "type": "string", "enum": ["blocking", "warning"] },
+                          "message": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "NotFound": { "description": "任务/运行不存在。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

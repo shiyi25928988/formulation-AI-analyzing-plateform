@@ -1,0 +1,190 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "auth-audit-svc",
+    "version": "1.0.0",
+    "description": "鉴权、数据分级、脱敏、审计（§4.1）。有状态；不承载业务逻辑。审计事件落库为强一致（§16.5）；追加写 + sha256 哈希链（B01 audit_event 表口径）。用户级权限统一在此判定：Neo4j CE 无库级 RBAC、各服务不得自带权限模型（§8.2 / ADR-20）。",
+    "x-service-boundary": "不负责：业务逻辑"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/auth-audit" }],
+  "paths": {
+    "/authz/decide": {
+      "post": {
+        "operationId": "decideAccess",
+        "summary": "RBAC+ABAC 访问判定（服务间调用，< 30ms 预算，§15.2）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["subject", "action", "resource"],
+                "additionalProperties": false,
+                "properties": {
+                  "subject": { "type": "object", "required": ["user_id"], "additionalProperties": false, "properties": { "user_id": { "type": "string" }, "roles": { "type": "array", "items": { "type": "string" } } } },
+                  "action": { "type": "string", "enum": ["read", "write", "export", "train", "admin"], "description": "默认拒绝原则（§8.2）：未显式授权一律 deny。" },
+                  "resource": { "type": "object", "required": ["type", "id"], "additionalProperties": false, "properties": { "type": { "type": "string", "enum": ["formula", "experiment", "dataset_snapshot", "model", "graph_subgraph"] }, "id": { "type": "string" } } },
+                  "context": { "type": "object", "description": "ABAC 上下文（密级、项目归属、时间窗等）。", "additionalProperties": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "判定结果（不抛异常，永远返回决定）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["decision", "reason_code"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "decision": { "type": "string", "enum": ["allow", "deny"] },
+                    "reason_code": { "type": "string", "description": "deny 原因码（进审计，不向终端用户泄露规则细节）。" },
+                    "masked_fields": { "type": "array", "items": { "type": "string" }, "description": "allow 但需脱敏的字段清单（§8.3）。" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/audit/events": {
+      "get": {
+        "operationId": "queryAuditEvents",
+        "summary": "审计查询（追加写日志；哈希链可反查防篡改）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "correlation_id", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/Uuid" } },
+          { "name": "aggregate_id", "in": "query", "required": false, "schema": { "type": "string", "description": "按配方/实验/推荐批次反查时间线。" } },
+          { "name": "from", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601" } },
+          { "name": "to", "in": "query", "required": false, "schema": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601" } }
+        ],
+        "responses": {
+          "200": { "description": "审计条目（月分区表口径）。批量导出/打印视为高风险动作（§8.2）：导出另走 /exports。", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuditEventList" } } } },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/audit/verify": {
+      "post": {
+        "operationId": "verifyAuditChain",
+        "summary": "审计哈希链完整性校验",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["range"],
+                "additionalProperties": false,
+                "properties": {
+                  "range": { "type": "object", "required": ["from", "to"], "additionalProperties": false, "properties": { "from": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601" }, "to": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601" } } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "链校验结果：integrity_ok=false 即存在篡改或断链（必须告警）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["integrity_ok", "checked_count"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "integrity_ok": { "type": "boolean" },
+                    "checked_count": { "type": "integer", "minimum": 0 },
+                    "broken_at": { "type": "string", "description": "首个断链位置（事件 ID）。" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/exports": {
+      "post": {
+        "operationId": "requestExport",
+        "summary": "导出申请（高风险动作：强制审批 + 水印 + 审计，§8.2）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["scope", "format"],
+                "additionalProperties": false,
+                "properties": {
+                  "scope": { "type": "string", "description": "导出范围（配方集/快照/报表引用）。" },
+                  "format": { "type": "string", "enum": ["csv", "xlsx", "pdf"] },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "申请受理（审批状态机 + ExportRequested 事件，有效恰好一次 §16.4）。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "schemas": {
+      "AuditEventList": {
+        "type": "object",
+        "required": ["events", "chain_head_hash"],
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["event_id", "at", "actor", "action", "aggregate_id"],
+              "additionalProperties": false,
+              "properties": {
+                "event_id": { "type": "string" },
+                "at": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601" },
+                "actor": { "type": "string" },
+                "action": { "type": "string" },
+                "aggregate_id": { "type": "string" },
+                "correlation_id": { "$ref": "../schemas/common.schema.json#/$defs/Uuid" },
+                "prev_hash": { "type": "string", "description": "哈希链前指针（防篡改，B01 audit_event 口径）。" }
+              }
+            }
+          },
+          "chain_head_hash": { "type": "string", "description": "当前链头哈希，供定期对账。" }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

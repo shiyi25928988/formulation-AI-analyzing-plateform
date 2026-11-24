@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/task.schema.json",
+  "title": "异步任务视图（§4.2 / §4.3）",
+  "description": "所有长任务（批量筛选、优化、生成、训练）统一返回。进度经 WebSocket / 轮询上报；失败保留中间产物；任务状态机 queued → running → succeeded / failed / cancelled。",
+  "type": "object",
+  "required": ["task_id", "status", "queue", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": { "$ref": "common.schema.json#/$defs/TaskId" },
+    "status": { "$ref": "common.schema.json#/$defs/TaskStatus" },
+    "queue": {
+      "type": "string",
+      "enum": ["feature", "batch", "train", "export"],
+      "description": "四队列隔离（§15.2），防止训练饿死交互任务。"
+    },
+    "progress": { "type": "number", "minimum": 0, "maximum": 1 },
+    "created_at": { "$ref": "common.schema.json#/$defs/Iso8601" },
+    "started_at": { "$ref": "common.schema.json#/$defs/Iso8601" },
+    "finished_at": { "$ref": "common.schema.json#/$defs/Iso8601" },
+    "result_ref": { "type": "string", "description": "succeeded 后指向结果资源 URI 或对象存储键（MinIO）。" },
+    "failure": {
+      "type": "object",
+      "required": ["reason", "retryable"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": { "type": "string", "description": "失败原因；不得含敏感数据。" },
+        "retryable": { "type": "boolean" },
+        "artifacts_ref": { "type": "string", "description": "失败时的中间产物（供排查，§4.3）。" }
+      }
+    }
+  }
+}

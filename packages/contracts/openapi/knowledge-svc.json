@@ -1,0 +1,137 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "knowledge-svc",
+    "version": "1.0.0",
+    "description": "文献检索、RAG 问答、图谱查询（§4.1）。有状态；不做性能预测。R2 / 一期范围仅实现检索与脱敏问答基座；RAG 深度与图谱查询为二期增强（ADR-12 / ADR-19 / ADR-20）。Neo4j 仅接受本服务服务账号连接（ADR-20），用户级权限一律经 auth-audit-svc 判定后由本服务裁剪返回。异常按 L2 同级降级：问答与图谱入口暂停，核心闭环不受影响（§16.3）。",
+    "x-service-boundary": "不负责：性能预测",
+    "x-phase": "partial：/search 一期，/qa 与 /graph 二期启用"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/knowledge" }],
+  "paths": {
+    "/search": {
+      "post": {
+        "operationId": "searchLiterature",
+        "summary": "文献/知识条目检索（一期；BGE-M3 向量 + reranker，Qdrant 承载）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["query"],
+                "additionalProperties": false,
+                "properties": {
+                  "query": { "type": "string", "minLength": 1, "maxLength": 2000 },
+                  "filters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "source_types": { "type": "array", "items": { "type": "string", "enum": ["literature", "patent", "internal_note"] } },
+                      "material_system": { "type": "string" }
+                    }
+                  },
+                  "top_k": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "检索结果：条目 + 引用出处（可溯源到文献 ID 与页码；RAG 红线：LLM 只引用检索到的实测数据，ADR-19）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["results"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["entry_id", "source_type", "title", "snippet", "score"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "entry_id": { "type": "string" },
+                          "source_type": { "type": "string" },
+                          "title": { "type": "string" },
+                          "snippet": { "type": "string" },
+                          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+                          "locator": { "type": "string", "description": "精确出处（页码/章节），RAG 引用必带。" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "503": { "description": "L2 降级：向量索引不可用（§16.3）。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+        }
+      }
+    },
+    "/qa": {
+      "post": {
+        "operationId": "ragQuestionAnswer",
+        "summary": "RAG 问答（二期启用；一期返回 501）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["question"], "properties": { "question": { "type": "string" } }, "additionalProperties": false } } } },
+        "responses": {
+          "501": { "description": "二期范围（ADR-12 / ADR-19）。LLM 分档部署按 ADR-19，答案永不生成配方数值。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+        }
+      }
+    },
+    "/graph/query": {
+      "post": {
+        "operationId": "graphQuery",
+        "summary": "图谱多跳查询（二期启用；Neo4j CE，ADR-20；禁止向终端用户暴露 Cypher）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["pattern"],
+                "additionalProperties": false,
+                "properties": {
+                  "pattern": {
+                    "type": "object",
+                    "description": "结构化查询模式（节点/边/跳数限制）；不接受原始 Cypher 字符串（ADR-20 绕行约束 2）。",
+                    "additionalProperties": true
+                  },
+                  "max_hops": { "type": "integer", "minimum": 1, "maximum": 4, "default": 2 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": { "description": "二期范围（ADR-20）。租户私有子图经 ABAC 过滤后返回；公共知识全局共享。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

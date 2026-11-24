@@ -1,0 +1,109 @@
+{
+  "catalog_version": "1.0",
+  "description": "事件目录（§16.4 全表 + RecommendationIssued 补录）。投递语义仅两种：at-least-once-idempotent（至少一次 + 消费端幂等）与 effective-exactly-once（幂等键 + 状态机实现）。重试规范：仅幂等操作可重试，指数退避 + 抖动，最多 5 次后入死信队列，死信可人工重放。每日对账：事件流 vs 库内状态（实验数/快照数/模型版本数/审计条数），差异告警并生成对账报告，禁止人工改库消除差异。",
+  "idempotency_key_spec": "(tenant_id, event_type, aggregate_id, aggregate_version)",
+  "events": [
+    {
+      "type": "FormulaImported",
+      "publisher": "data-hub-svc",
+      "consumers": ["prediction-svc", "model-lifecycle-svc", "auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/FormulaImported",
+      "architecture_ref": "ARCHITECTURE.md §16.4"
+    },
+    {
+      "type": "FormulaVersionCreated",
+      "publisher": "data-hub-svc",
+      "consumers": ["prediction-svc", "auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/FormulaVersionCreated",
+      "architecture_ref": "ARCHITECTURE.md §16.4"
+    },
+    {
+      "type": "ExperimentCompleted",
+      "publisher": "experiment-svc",
+      "consumers": ["data-hub-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ExperimentCompleted",
+      "architecture_ref": "ARCHITECTURE.md §16.4",
+      "note": "目录原文消费者标注为「QC 服务」；一期质量判定由 data-hub-svc 质量规则引擎承载（§7.1），故落为 data-hub-svc。"
+    },
+    {
+      "type": "DataAccepted",
+      "publisher": "data-hub-svc",
+      "consumers": ["model-lifecycle-svc", "auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/DataAccepted",
+      "architecture_ref": "ARCHITECTURE.md §16.4",
+      "note": "目录原文消费者含训练编排与运营看板；训练触发由 model-lifecycle-svc 承载（§5.5）。"
+    },
+    {
+      "type": "DataRejected",
+      "publisher": "data-hub-svc",
+      "consumers": ["experiment-svc", "auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/DataRejected",
+      "architecture_ref": "ARCHITECTURE.md §16.4"
+    },
+    {
+      "type": "DatasetSnapshotFrozen",
+      "publisher": "data-hub-svc",
+      "consumers": ["model-lifecycle-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/DatasetSnapshotFrozen",
+      "architecture_ref": "ARCHITECTURE.md §16.4"
+    },
+    {
+      "type": "RecommendationIssued",
+      "publisher": "active-learning-svc",
+      "consumers": ["experiment-svc", "auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/RecommendationIssued",
+      "architecture_ref": "ARCHITECTURE.md §6.1（闭环状态机起点）",
+      "note": "§16.4 目录原表缺此事件，R2.2 skeleton 已使用，本轮补录并同步文档。"
+    },
+    {
+      "type": "ModelTrained",
+      "publisher": "model-lifecycle-svc",
+      "consumers": ["auth-audit-svc", "knowledge-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelTrained",
+      "architecture_ref": "ARCHITECTURE.md §16.4"
+    },
+    {
+      "type": "ModelPromoted",
+      "publisher": "model-lifecycle-svc",
+      "consumers": ["prediction-svc", "auth-audit-svc", "knowledge-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/ModelPromoted",
+      "architecture_ref": "ARCHITECTURE.md §16.4",
+      "note": "消费者原文含「在线推理、审计、通知」；在线推理即 prediction-svc 双缓冲加载（§15.2）。"
+    },
+    {
+      "type": "CanaryFailed",
+      "publisher": "model-lifecycle-svc",
+      "consumers": ["auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/CanaryFailed",
+      "architecture_ref": "ARCHITECTURE.md §16.4"
+    },
+    {
+      "type": "DriftDetected",
+      "publisher": "model-lifecycle-svc",
+      "consumers": ["model-lifecycle-svc", "auth-audit-svc"],
+      "delivery": "at-least-once-idempotent",
+      "payload_ref": "events.schema.json#/$defs/DriftDetected",
+      "architecture_ref": "ARCHITECTURE.md §16.4",
+      "note": "目录原文投递语义为「允许重复」；统一收敛为 at-least-once-idempotent，重复由消费端幂等吸收。监控侧发布者一期由 model-lifecycle-svc 漂移任务承载。"
+    },
+    {
+      "type": "ExportRequested",
+      "publisher": "auth-audit-svc",
+      "consumers": ["auth-audit-svc"],
+      "delivery": "effective-exactly-once",
+      "payload_ref": "events.schema.json#/$defs/ExportRequested",
+      "architecture_ref": "ARCHITECTURE.md §16.4",
+      "note": "有效恰好一次（幂等键 + 审批状态机实现）。BFF 入口经 auth-audit-svc 落审批流，目录原文发布者 BFF 指用户侧入口。"
+    }
+  ]
+}

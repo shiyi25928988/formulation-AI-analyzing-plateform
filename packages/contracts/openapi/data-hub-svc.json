@@ -1,0 +1,143 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "data-hub-svc",
+    "version": "1.0.0",
+    "description": "主数据、版本、血缘、质量规则、快照（§4.1）。有状态；不做特征计算。唯一拥有「主数据」写权限的服务（§4.1 边界原则）。快照冻结与内容哈希写入为强一致边界（§16.5）；质量规则引擎在此承载阻断级 QC（§3.3 / §7.1）。",
+    "x-service-boundary": "不负责：特征计算"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/data-hub" }],
+  "paths": {
+    "/formulas/import": {
+      "post": {
+        "operationId": "importFormulas",
+        "summary": "历史配方批量导入（阻断级 QC 在此执行）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["source_ref"],
+                "additionalProperties": false,
+                "properties": {
+                  "source_ref": { "type": "string", "description": "导入源（对象存储键 / LIMS 适配器引用）。" },
+                  "unit_normalization": { "type": "boolean", "default": true, "description": "单位归一（§6.2 快照口径）。" },
+                  "failure_record_policy": {
+                    "type": "string",
+                    "enum": ["preserve_all", "flag_only"],
+                    "default": "preserve_all",
+                    "description": "失败/取消记录必须与成功同等留痕（附录 B.1 已定决策，数据红线级）。preserve_all 为唯一合规值；flag_only 仅限过渡期并在审计中标记。"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "导入批受理；完成后发布 FormulaImported（含 blocked_count）。", "content": { "application/json": { "schema": { "$ref": "../schemas/task.schema.json" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/snapshots/freeze": {
+      "post": {
+        "operationId": "freezeSnapshot",
+        "summary": "冻结数据快照（强一致；冻结即写内容哈希，§16.5）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["as_of"],
+                "additionalProperties": false,
+                "properties": {
+                  "as_of": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601", "description": "T0 时刻（point-in-time 冻结，§17.2）。" },
+                  "include_failed": { "type": "boolean", "default": true, "description": "失败/取消样本纳入训练集（负结果一等记录）。" },
+                  "fidelity_filter": { "type": "array", "items": { "type": "string", "enum": ["experiment", "literature", "simulation"] }, "description": "多保真度纳入范围（§3.4）；缺省仅 experiment。" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "快照冻结。dataset_snapshot_id + content_hash 立即可用（强一致）。后续发布 DatasetSnapshotFrozen。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["dataset_snapshot_id", "content_hash", "train_row_count", "fidelity_breakdown"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "dataset_snapshot_id": { "$ref": "../schemas/common.schema.json#/$defs/DatasetSnapshotId" },
+                    "content_hash": { "type": "string", "minLength": 32 },
+                    "train_row_count": { "type": "integer", "minimum": 0 },
+                    "fidelity_breakdown": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "experiment": { "type": "integer" },
+                        "literature": { "type": "integer" },
+                        "simulation": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/formulas/{formula_id}/versions": {
+      "get": {
+        "operationId": "listFormulaVersions",
+        "summary": "配方版本列表（版本不可变，append-only）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "formula_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "版本列表。", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FormulaVersionView" } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "schemas": {
+      "FormulaVersionView": {
+        "type": "object",
+        "required": ["formula_id", "version", "formula_version_id"],
+        "additionalProperties": false,
+        "properties": {
+          "formula_id": { "type": "string" },
+          "formula_version_id": { "type": "string" },
+          "version": { "type": "integer", "minimum": 1 },
+          "measured": { "type": "object", "description": "实测指标（QC 通过后写入；追加写不可变）。" }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "NotFound": { "description": "配方不存在。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}

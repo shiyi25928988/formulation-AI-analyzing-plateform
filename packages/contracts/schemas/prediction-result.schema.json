@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/prediction-result.schema.json",
+  "title": "单指标预测结果（§4.3）",
+  "description": "单指标预测结果（§4.3）。条件语义（validate.py semantic_check_prediction 强制）：ood_level=severe 时 value/intervals/explanation 必须缺省（拒答不返回数值）；ood_level=advisory 时 advisory_only 必须为 true；返回数值时 intervals 三档（0.50/0.70/0.90）必须齐全，未校准档位以 calibrated=false 显式标记。",
+  "type": "object",
+  "required": ["metric", "unit", "ood_level"],
+  "additionalProperties": false,
+  "properties": {
+    "metric": { "$ref": "common.schema.json#/$defs/MetricCode" },
+    "unit": { "$ref": "common.schema.json#/$defs/Unit" },
+    "value": { "type": ["number", "null"], "description": "点估计。ood_level=severe 时必须为 null 或缺省。" },
+    "ood_level": { "$ref": "common.schema.json#/$defs/OodLevel" },
+    "advisory_only": {
+      "type": "boolean",
+      "description": "ood_level=advisory 时必须为 true：UI 须提示不得直接采纳。"
+    },
+    "intervals": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "interval.schema.json" },
+      "description": "0.50 / 0.70 / 0.90 三档，顺序不承诺，按 confidence 读取。severe 时必须缺省。"
+    },
+    "explanation": {
+      "type": ["object", "null"],
+      "required": ["method", "top_factors", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string", "description": "解释方法标识（如 shap-group）。" },
+        "top_factors": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["feature", "contribution"],
+            "additionalProperties": false,
+            "properties": {
+              "feature": { "type": "string" },
+              "contribution": { "type": "number" }
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["inline", "deferred", "unavailable"],
+          "description": "deferred = 解释异步补齐（§15.2：解释比推理贵 5 倍以上，explain 是可降级项）。"
+        }
+      },
+      "description": "请求 explain=true 且未超时→inline；超时→null + prediction-svc 异步补齐后经事件/轮询更新（deferred）。"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/common.schema.json",
+  "title": "AdheFormAI 共享定义",
+  "description": "跨服务共享的基础类型。口径来源：ARCHITECTURE.md §3.2（表结构）、§5.2（三档区间）、§15.3（OOD 两级）。本文件仅用 JSON Schema 2020-12 子集（见 tools/validate.py 支持清单）。",
+  "$defs": {
+    "TenantId": {
+      "type": "string",
+      "pattern": "^T-[0-9]{4}$",
+      "examples": ["T-0001"],
+      "description": "租户标识。所有请求与事件必带；RLS 与 ABAC 的作用域键。"
+    },
+    "MetricCode": {
+      "type": "string",
+      "description": "指标代码，须与 model_registry 注册的训练目标一致（§3.2 metric 表）。",
+      "examples": ["tg_like", "lap_shear_like"]
+    },
+    "Unit": { "type": "string", "description": "SI 单位字符串，导入时经单位归一（§6.2 快照口径）。" },
+    "FeatureVector": {
+      "type": "array",
+      "items": { "type": ["number", "null"] },
+      "description": "归一化特征向量，顺序由 feature_set_version 定义（ADR-04：特征定义版本化）。"
+    },
+    "FeatureSetVersion": {
+      "type": "string",
+      "pattern": "^FS-v[0-9]+\\.[0-9]+$",
+      "examples": ["FS-v1.0"],
+      "description": "特征集版本。训练与服务必须同版本，版本不匹配即失效（§15.2）。"
+    },
+    "ModelVersion": {
+      "type": "string",
+      "pattern": "^M-v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "examples": ["M-v1.0.0"],
+      "description": "模型版本，与 model_registry.registry_id 对应。"
+    },
+    "DatasetSnapshotId": {
+      "type": "string",
+      "pattern": "^SNP-[0-9]{8}-[0-9a-f]{8}$",
+      "examples": ["SNP-20261124-1a2b3c4d"],
+      "description": "数据快照 ID，冻结后不可变（append-only，§6.2）。"
+    },
+    "ConfidenceLevel": {
+      "type": "number",
+      "enum": [0.5, 0.7, 0.9],
+      "description": "conformal 三档：0.50 供主动学习采集函数、0.70 供批次决策、0.90 为验收与对外口径（§5.2 / §4.3）。"
+    },
+    "OodLevel": {
+      "type": "string",
+      "enum": ["none", "advisory", "severe"],
+      "description": "OOD 两级处置（§15.3 / §4.3）：advisory 返回数值但强制 advisory_only 标记；severe 拒答该指标，不返回数值。"
+    },
+    "Uuid": { "type": "string", "format": "uuid" },
+    "Iso8601": { "type": "string", "format": "date-time", "description": "UTC，ISO-8601。" },
+    "IdempotencyKey": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "description": "客户端生成的幂等键。服务端按 (tenant_id, event_type, aggregate_id, aggregate_version) 或请求指纹去重，重复请求返回上次结果。"
+    },
+    "TaskId": {
+      "type": "string",
+      "pattern": "^TASK-[0-9]{8}-[0-9a-f]{8}$",
+      "description": "异步任务标识。状态机 queued → running → succeeded / failed / cancelled（§4.3）；失败保留中间产物。"
+    },
+    "TaskStatus": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed", "cancelled"],
+      "description": "异步任务状态（§4.3）。仅幂等操作可重试：指数退避 + 抖动，最多 5 次后入死信队列（§16.4）。"
+    },
+    "ExperimentState": {
+      "type": "string",
+      "enum": ["RECOMMENDED", "REVIEWED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "QC_PENDING", "ACCEPTED", "REJECTED", "CANCELLED"],
+      "description": "实验九态（§6.1），合法迁移白名单镜像 db/migrations/001_init_schema.sql 的 experiment_transition_guard。"
+    },
+    "Component": {
+      "type": "object",
+      "required": ["material_id", "phr"],
+      "additionalProperties": false,
+      "properties": {
+        "material_id": { "type": "string", "description": "原材料主数据 ID（data-hub-svc 管理）。" },
+        "phr": { "type": "number", "minimum": 0, "description": "每百份树脂份数，DECIMAL(12,4) 口径（§3.2）。" },
+        "role": { "type": "string", "description": "组分角色（resin/curing_agent/filler/...），QC 规则引用。" }
+      }
+    },
+    "ProcessCondition": {
+      "type": "object",
+      "required": ["cure_temp_c", "cure_time_min"],
+      "additionalProperties": false,
+      "properties": {
+        "cure_temp_c": { "type": "number" },
+        "cure_time_min": { "type": "number", "minimum": 0 },
+        "post_cure": { "type": "boolean" },
+        "ambient_rh_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "FormulaSpec": {
+      "type": "object",
+      "required": ["components", "process"],
+      "additionalProperties": false,
+      "properties": {
+        "components": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Component" } },
+        "process": { "$ref": "#/$defs/ProcessCondition" }
+      },
+      "description": "配方输入（§4.3 /predict 请求体口径）。"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adheform.ai/contracts/schemas/error.schema.json",
+  "title": "统一错误响应（RFC 9457 Problem Details）",
+  "description": "所有 4xx/5xx 响应体。错误码契约：网关快速失败返回明确错误码（§15.2），服务不得吞错返回 200。",
+  "type": "object",
+  "required": ["type", "title", "status", "detail", "instance", "trace_id"],
+  "additionalProperties": true,
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "错误类型 URI 片段。预留：/errors/validation、/errors/authz、/errors/idempotency-conflict、/errors/ood-severe、/errors/rate-limit、/errors/internal。"
+    },
+    "title": { "type": "string", "description": "稳定的短标题（英文），供客户端分支判断。" },
+    "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+    "detail": { "type": "string", "description": "面向开发者的说明；不得包含配方数值等敏感内容（§8.3）。" },
+    "instance": { "type": "string", "description": "发生错误的请求路径。" },
+    "trace_id": { "$ref": "common.schema.json#/$defs/Uuid", "description": "与审计日志关联的追踪 ID（correlation_id 同源）。" },
+    "idempotency_replay": { "type": "boolean", "description": "true 表示本响应为幂等键命中后的重放结果。" }
+  }
+}

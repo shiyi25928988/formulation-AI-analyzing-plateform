@@ -1,0 +1,141 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "experiment-svc",
+    "version": "1.0.0",
+    "description": "实验状态机、DoE 编排、结果回写、LIMS/ELN 同步（§4.1）。有状态；不做质量判定（交 data-hub-svc 质量规则引擎，§7.1）。唯一拥有「实验与结果」写权限的服务（§4.1 边界原则）。九态迁移白名单镜像 db/migrations/001_init_schema.sql 的 experiment_transition_guard，非法迁移返回 409。",
+    "x-service-boundary": "不负责：质量判定（QC 交 data-hub-svc）"
+  },
+  "servers": [{ "url": "https://gw.adheform.internal/api/v1/experiment" }],
+  "paths": {
+    "/experiments": {
+      "post": {
+        "operationId": "createExperiment",
+        "summary": "创建实验（初始态 RECOMMENDED；来源可为 RecommendationIssued 消费或人工录入）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["formula_version_id"],
+                "additionalProperties": false,
+                "properties": {
+                  "formula_version_id": { "type": "string" },
+                  "recommendation_batch_id": { "type": "string", "description": "来源推荐批次；人工录入时缺省（血缘仍经 formula_version_id 保持）。" },
+                  "priority": { "type": "string", "enum": ["normal", "high"], "default": "normal" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "已创建，初始态 RECOMMENDED（§6.1）。",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExperimentView" } } }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/IdempotencyConflict" }
+        }
+      }
+    },
+    "/experiments/{experiment_id}/transitions": {
+      "post": {
+        "operationId": "transitionExperiment",
+        "summary": "状态迁移（九态白名单；非法迁移 409）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "name": "experiment_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to_state", "actor"],
+                "additionalProperties": false,
+                "properties": {
+                  "to_state": { "$ref": "../schemas/common.schema.json#/$defs/ExperimentState" },
+                  "actor": { "type": "string", "description": "操作者（用户或服务账号），进 experiment_state_log 追加写。" },
+                  "reason": { "type": "string", "description": "REJECTED/CANCELLED 必填原因（失败样本库口径）。" },
+                  "results": {
+                    "type": "object",
+                    "description": "COMPLETED 时必带：测试结果集（metric/value/unit/measured_at）。QC 判定由 data-hub-svc 规则引擎在 QC_PENDING 阶段执行。",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "迁移成功，返回迁移后视图；每次迁移写 experiment_state_log（追加写）。", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExperimentView" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "非法迁移（不在白名单）或幂等冲突；Problem Details type=/errors/invalid-transition。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+        }
+      }
+    },
+    "/experiments/{experiment_id}": {
+      "get": {
+        "operationId": "getExperiment",
+        "summary": "实验详情（含状态日志时间线）",
+        "parameters": [
+          { "$ref": "#/components/parameters/XTenantId" },
+          { "name": "experiment_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "实验视图 + 迁移日志（可审计反查）。", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExperimentView" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "XTenantId": { "name": "X-Tenant-Id", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/TenantId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "$ref": "../schemas/common.schema.json#/$defs/IdempotencyKey" } }
+    },
+    "schemas": {
+      "ExperimentView": {
+        "type": "object",
+        "required": ["experiment_id", "formula_version_id", "state", "state_log"],
+        "additionalProperties": false,
+        "properties": {
+          "experiment_id": { "type": "string" },
+          "formula_version_id": { "type": "string" },
+          "state": { "$ref": "../schemas/common.schema.json#/$defs/ExperimentState" },
+          "state_log": {
+            "type": "array",
+            "description": "追加写的状态日志（experiment_state_log 口径），按时间升序。",
+            "items": {
+              "type": "object",
+              "required": ["from_state", "to_state", "actor", "at"],
+              "additionalProperties": false,
+              "properties": {
+                "from_state": { "$ref": "../schemas/common.schema.json#/$defs/ExperimentState" },
+                "to_state": { "$ref": "../schemas/common.schema.json#/$defs/ExperimentState" },
+                "actor": { "type": "string" },
+                "reason": { "type": "string" },
+                "at": { "$ref": "../schemas/common.schema.json#/$defs/Iso8601" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": { "description": "请求体校验失败。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "Forbidden": { "description": "ABAC 判定拒绝。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "NotFound": { "description": "实验不存在。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } },
+      "IdempotencyConflict": { "description": "同幂等键请求指纹不同。", "content": { "application/problem+json": { "schema": { "$ref": "../schemas/error.schema.json" } } } }
+    }
+  }
+}
