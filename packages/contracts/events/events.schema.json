@@ -449,6 +449,10 @@
                       "SKIPPED"
                     ],
                     "description": "短路求值：失败即停，未执行项标 SKIPPED。"
+                  },
+                  "detail": {
+                    "type": "string",
+                    "description": "逐项判定说明（短路求值留痕，模型卡引用）。"
                   }
                 }
               },
@@ -525,6 +529,10 @@
                       "SKIPPED"
                     ],
                     "description": "短路求值：失败即停，未执行项标 SKIPPED。"
+                  },
+                  "detail": {
+                    "type": "string",
+                    "description": "逐项判定说明（短路求值留痕，模型卡引用）。"
                   }
                 }
               },

@@ -149,8 +149,14 @@ class SkeletonStore:
     # ---- 事件信封 + 审计哈希链（§16.4 + §18.2 第 10 步） -------------------
 
     def emit(self, source: str, event_type: str, payload: dict,
-             event_id: str | None = None) -> dict:
-        """发布事件并写入审计哈希链；event_id 幂等（至少一次投递的重放安全）。"""
+             event_id: str | None = None,
+             aggregate_id: str | None = None) -> dict:
+        """发布事件并写入审计哈希链；event_id 幂等（至少一次投递的重放安全）。
+
+        ``aggregate_id`` 为幂等键四元组 (tenant_id, event_type,
+        aggregate_id, aggregate_version) 的聚合标识（§16.4）；
+        B09 生命周期事件以 model_version 聚合。
+        """
         event_id = event_id or _rid("EVT")
         if event_id in self._event_ids:
             raise DuplicateEventError(f"duplicate event_id {event_id}")
@@ -165,6 +171,7 @@ class SkeletonStore:
         row = self.insert("audit_event", {
             "id": event_id, "seq": self._seq, "ts": ts, "source": source,
             "type": event_type, "payload": payload,
+            "aggregate_id": aggregate_id,
             "prev_hash": self._prev_hash, "hash": h,
         })
         self._prev_hash = h
