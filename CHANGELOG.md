@@ -167,6 +167,8 @@
 | `a624611` | `feat(replay): add offline replay framework with baseline report and sync R2.1 docs (B02)` —— 零依赖离线回放框架 + 12 种子基线报告 + R2.1 文档同步 + B01/B02 验收结论 + 应用架构图 |
 | `d20b26b` | `feat(skeleton): add walking skeleton end-to-end pipeline on synthetic data (B03)` —— Walking skeleton 端到端链路（十步全落点，21 项断言全过，两轮闭环演示） |
 | `7aa94cf` | `docs: add ADR-20 Neo4j CE selection and sync R2.2 walking-skeleton docs` —— ADR-20 图谱存储选型落档（8 处）+ R2.2 文档同步 |
+| `9cba6f9` | `feat(contracts): add service contracts - 9 OpenAPI specs, event catalog, validator (B04)` —— 契约包：九服务 OpenAPI 3.1 + 7 共享 schema + 12 事件目录/payload + 零依赖校验器 + 18 项契约测试（21 文件 / +2783 行） |
+| `5419646` | `docs: sync R2.3 contract package into architecture set (B04)` —— §4.3/§16.4 契约包指针 + 迭代记录 R2.3 + CHANGELOG/README 同步 |
 
 ---
 
