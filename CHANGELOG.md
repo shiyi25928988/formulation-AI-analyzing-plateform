@@ -225,6 +225,7 @@
 | `0ac4d47` | `docs: sync R2.4 canary acceptance into iteration docs (B06)` —— 迭代记录 R2.4 + CHANGELOG/README 同步 |
 | `318d31e` | `feat(features): add versioned feature factory with approval registry (B07)` —— 特征单一来源：版本化定义 + 内容指纹 + 统一 transform + 审批注册表（7 文件 / +649 行，含契约 FeatureSetRegistered 补录与骨架全链路接线） |
 | `c1e1771` | `docs: sync R2.5 feature factory into architecture set (B07)` —— §16.4 加行 + 迭代记录 R2.5 + CHANGELOG/README 同步 |
+| `72da194` | `docs: add B09 pipeline detail design (train-gate-register-canary + model card)` —— 训练→门禁→注册→灰度流水线详设 + 模型卡模板（状态机以 DDL 为权威、六条迁移白名单、G0–G5 + C1–C3 门禁、模型卡 8 节） |
 
 ---
 
