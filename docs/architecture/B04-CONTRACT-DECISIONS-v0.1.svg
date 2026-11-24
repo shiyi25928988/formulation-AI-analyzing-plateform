@@ -1,0 +1,99 @@
+<svg viewBox="0 0 680 528" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>AdheFormAI B04 契约包：10 条关键契约决策分层图</title>
+  <desc>按请求边界、预测响应红线、任务与状态机、事件与知识边界四层组织 10 条契约决策，左侧为请求生命周期主线。依据 ARCHITECTURE.md §4.3/§5.2/§15.2/§15.3/§16.4 与 ADR-20。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <style>
+    .t{font-family:sans-serif;font-size:13px;fill:#2C2C2A}
+    .th{font-family:sans-serif;font-size:14px;font-weight:500;fill:#2C2C2A}
+    .ts{font-family:sans-serif;font-size:12px;fill:#5F5E5A}
+    .chipT{font-family:sans-serif;font-size:12.5px;font-weight:500;fill:#2C2C2A}
+    .chipS{font-family:sans-serif;font-size:11px;fill:#5F5E5A}
+    .num{font-family:sans-serif;font-size:11px;font-weight:500;fill:#FFFFFF}
+    .cap{font-family:sans-serif;font-size:12px;fill:#888780}
+  </style>
+
+  <text class="th" x="40" y="46">契约包 10 条关键决策（B04）</text>
+  <text class="ts" x="40" y="66">四层边界 × 决策编号，左侧为一次请求的完整生命周期</text>
+
+  <g font-size="0">
+    <line x1="85" y1="136" x2="85" y2="206" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+    <line x1="85" y1="246" x2="85" y2="316" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+    <line x1="85" y1="356" x2="85" y2="426" stroke="#888780" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  </g>
+  <g>
+    <rect x="40" y="98" width="90" height="36" rx="8" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text class="t" x="85" y="116" text-anchor="middle" dominant-baseline="central">客户端 / BFF</text>
+    <rect x="40" y="208" width="90" height="36" rx="8" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text class="t" x="85" y="226" text-anchor="middle" dominant-baseline="central">prediction-svc</text>
+    <rect x="40" y="318" width="90" height="36" rx="8" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text class="t" x="85" y="336" text-anchor="middle" dominant-baseline="central">Worker / 实验</text>
+    <rect x="40" y="428" width="90" height="36" rx="8" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="0.5"/>
+    <text class="t" x="85" y="446" text-anchor="middle" dominant-baseline="central">事件总线 / 知识</text>
+  </g>
+
+  <g>
+    <rect x="150" y="64" width="490" height="96" rx="12" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+    <text class="chipT" x="170" y="82" fill="#0C447C">请求边界</text>
+    <rect x="170" y="96" width="220" height="48" rx="8" fill="#FFFFFF" stroke="#185FA5" stroke-width="0.5"/>
+    <circle cx="186" cy="108" r="9" fill="#185FA5"/><text class="num" x="186" y="108" text-anchor="middle" dominant-baseline="central">1</text>
+    <text class="chipT" x="200" y="108" dominant-baseline="central">幂等键 + 租户头</text>
+    <text class="chipS" x="200" y="128" dominant-baseline="central">所有 POST 必带 · 重放返回上次结果</text>
+    <rect x="400" y="96" width="220" height="48" rx="8" fill="#FFFFFF" stroke="#185FA5" stroke-width="0.5"/>
+    <circle cx="416" cy="108" r="9" fill="#185FA5"/><text class="num" x="416" y="108" text-anchor="middle" dominant-baseline="central">8</text>
+    <text class="chipT" x="430" y="108" dominant-baseline="central">统一错误响应</text>
+    <text class="chipS" x="430" y="128" dominant-baseline="central">RFC 9457 · type 稳定分支</text>
+  </g>
+
+  <g>
+    <rect x="150" y="174" width="490" height="96" rx="12" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text class="chipT" x="170" y="192" fill="#085041">预测响应红线</text>
+    <rect x="170" y="206" width="106" height="48" rx="8" fill="#FFFFFF" stroke="#0F6E56" stroke-width="0.5"/>
+    <circle cx="186" cy="218" r="9" fill="#0F6E56"/><text class="num" x="186" y="218" text-anchor="middle" dominant-baseline="central">3</text>
+    <text class="chipT" x="170" y="230" text-anchor="middle" dominant-baseline="central">provenance</text>
+    <text class="chipS" x="170" y="248" text-anchor="middle" dominant-baseline="central">三元组必返</text>
+    <rect x="284" y="206" width="106" height="48" rx="8" fill="#FFFFFF" stroke="#0F6E56" stroke-width="0.5"/>
+    <circle cx="300" cy="218" r="9" fill="#0F6E56"/><text class="num" x="300" y="218" text-anchor="middle" dominant-baseline="central">4</text>
+    <text class="chipT" x="337" y="230" text-anchor="middle" dominant-baseline="central">三档区间</text>
+    <text class="chipS" x="337" y="248" text-anchor="middle" dominant-baseline="central">0.50/0.70/0.90</text>
+    <rect x="398" y="206" width="106" height="48" rx="8" fill="#FFFFFF" stroke="#0F6E56" stroke-width="0.5"/>
+    <circle cx="414" cy="218" r="9" fill="#0F6E56"/><text class="num" x="414" y="218" text-anchor="middle" dominant-baseline="central">5</text>
+    <text class="chipT" x="451" y="230" text-anchor="middle" dominant-baseline="central">OOD 两级</text>
+    <text class="chipS" x="451" y="248" text-anchor="middle" dominant-baseline="central">severe 拒答</text>
+    <rect x="512" y="206" width="106" height="48" rx="8" fill="#FFFFFF" stroke="#0F6E56" stroke-width="0.5"/>
+    <circle cx="528" cy="218" r="9" fill="#0F6E56"/><text class="num" x="528" y="218" text-anchor="middle" dominant-baseline="central">6</text>
+    <text class="chipT" x="565" y="230" text-anchor="middle" dominant-baseline="central">解释可降级</text>
+    <text class="chipS" x="565" y="248" text-anchor="middle" dominant-baseline="central">deferred 补齐</text>
+  </g>
+
+  <g>
+    <rect x="150" y="284" width="490" height="96" rx="12" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text class="chipT" x="170" y="302" fill="#3C3489">任务与状态机</text>
+    <rect x="170" y="316" width="220" height="48" rx="8" fill="#FFFFFF" stroke="#534AB7" stroke-width="0.5"/>
+    <circle cx="186" cy="328" r="9" fill="#534AB7"/><text class="num" x="186" y="328" text-anchor="middle" dominant-baseline="central">7</text>
+    <text class="chipT" x="200" y="328" dominant-baseline="central">任务状态机</text>
+    <text class="chipS" x="200" y="348" dominant-baseline="central">四队列隔离 · 失败留产物</text>
+    <rect x="400" y="316" width="220" height="48" rx="8" fill="#FFFFFF" stroke="#534AB7" stroke-width="0.5"/>
+    <circle cx="416" cy="328" r="9" fill="#534AB7"/><text class="num" x="416" y="328" text-anchor="middle" dominant-baseline="central">9</text>
+    <text class="chipT" x="430" y="328" dominant-baseline="central">九态白名单</text>
+    <text class="chipS" x="430" y="348" dominant-baseline="central">镜像 DDL 迁移守卫 · 非法迁移 409</text>
+  </g>
+
+  <g>
+    <rect x="150" y="394" width="490" height="96" rx="12" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="chipT" x="170" y="412" fill="#633806">事件与知识边界</text>
+    <rect x="170" y="426" width="220" height="48" rx="8" fill="#FFFFFF" stroke="#854F0B" stroke-width="0.5"/>
+    <circle cx="186" cy="438" r="9" fill="#854F0B"/><text class="num" x="186" y="438" text-anchor="middle" dominant-baseline="central">2</text>
+    <text class="chipT" x="200" y="438" dominant-baseline="central">事件幂等键</text>
+    <text class="chipS" x="200" y="458" dominant-baseline="central">(tenant, type, agg, ver)</text>
+    <rect x="400" y="426" width="220" height="48" rx="8" fill="#FFFFFF" stroke="#854F0B" stroke-width="0.5"/>
+    <circle cx="416" cy="438" r="9" fill="#854F0B"/><text class="num" x="416" y="438" text-anchor="middle" dominant-baseline="central">10</text>
+    <text class="chipT" x="434" y="438" dominant-baseline="central">禁 Cypher 直传</text>
+    <text class="chipS" x="434" y="458" dominant-baseline="central">knowledge-svc 服务账号独占</text>
+  </g>
+
+  <text class="cap" x="150" y="512">出处：ARCHITECTURE.md §4.3 · §5.2 · §15.2 · §15.3 · §16.4 · ADR-20 ｜ 详见 B04-CHANGE-NOTES.md</text>
+</svg>

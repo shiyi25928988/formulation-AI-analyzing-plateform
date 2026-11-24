@@ -35,6 +35,7 @@
 | [`tests/replay/README.md`](tests/replay/README.md) | 离线回放框架使用说明：§17.2 全口径实现、两种回放模式、判读规则与升级路径 |
 | [`skeleton/README.md`](skeleton/README.md) | Walking skeleton（B03）：§18.2 十步端到端链路逐条对照、镜像不变量清单与简化升级路径 |
 | [`packages/contracts/README.md`](packages/contracts/README.md) | 服务契约包（B04）：九服务 OpenAPI 3.1 + 事件目录/信封 schema + 校验器五类检查与红线口径速查 |
+| [`docs/architecture/B04-CHANGE-NOTES.md`](docs/architecture/B04-CHANGE-NOTES.md) | R2.3 变更说明：契约包交付清单、10 条关键契约决策、目录补录澄清、契约自冲突修正与验收结果 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 
 架构文档附录 B 现含 **2 项已定决策与 10 项待客户确认的开放问题**。已定决策一：「历史是否保留失败与取消记录」依据行业证据（失败实验极少被数字化，Raccuglia et al., *Nature* 2016）按「历史库大概率不完整」处理——离线回放内置幸存者偏差诊断，新采集数据强制全记录失败与取消。已定决策二：「图谱存储选型」定论 Neo4j 社区版 + 四条绕行约束（ADR-20），配方主数据与血缘强制留在 PostgreSQL + RLS。开放问题中「历史数据可用样本量」仍决定模型选型是否调整。
