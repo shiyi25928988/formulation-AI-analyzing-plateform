@@ -142,6 +142,8 @@
 | `256fea0` | `docs: add UI prototype v0.1 with design tokens and figma handoff notes` —— 界面原型 v0.1（5 界面 + 设计令牌 + Figma 交接） |
 | `307cbe5` | `feat(db): add core schema DDL with RLS and state-machine triggers (B01)` —— 核心表 DDL + 回滚脚本 + 迁移约定（24 表 / 10 枚举 / RLS / 状态机触发器） |
 | `a624611` | `feat(replay): add offline replay framework with baseline report and sync R2.1 docs (B02)` —— 零依赖离线回放框架 + 12 种子基线报告 + R2.1 文档同步 + B01/B02 验收结论 + 应用架构图 |
+| `d20b26b` | `feat(skeleton): add walking skeleton end-to-end pipeline on synthetic data (B03)` —— Walking skeleton 端到端链路（十步全落点，21 项断言全过，两轮闭环演示） |
+| `7aa94cf` | `docs: add ADR-20 Neo4j CE selection and sync R2.2 walking-skeleton docs` —— ADR-20 图谱存储选型落档（8 处）+ R2.2 文档同步 |
 
 ---
 
