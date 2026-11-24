@@ -52,7 +52,7 @@
 | B04 | 契约定义：OpenAPI + 事件信封 / JSON Schema（`packages/contracts/`） | P1 | 固化 §4.3 与 §16.4，支撑契约测试与 OpenAPI diff | 无 | **R2.3 已落地**（九服务 OpenAPI 3.1 + 7 共享 schema + 12 事件目录/payload + 零依赖校验器 PASS + 18 项契约测试全过；含 §16.4 补录 RecommendationIssued；见 `packages/contracts/README.md`） |
 | B05 | 数据导入 + QC 阻断级规则引擎 | P1 | 数据治理是一期真正瓶颈，决定可用样本量 | B01 | 待办 |
 | B06 | 语义断言 + 金丝雀配方集实现 | P1 | 防 §16.2 静默失败，成本最低的可信度投入 | B01、B04 | R2.4 已落地 |
-| B07 | 版本化特征工厂 + Feature Store 最小实现 | P1 | 落实 ADR-04，防止 training-serving skew | B01、B04 | 待办 |
+| B07 | 版本化特征工厂 + Feature Store 最小实现 | P1 | 落实 ADR-04，防止 training-serving skew | B01、B04 | R2.5 已落地 |
 | B08 | 前端信息架构与页面原型（配方工作台 / Pareto 图 / 实验台） | P1 | 让工程师能实际采纳推荐；降级提示需按 §16.3 设计 | B04 | 待办 |
 | B09 | 训练 → 门禁 → 注册 → 灰度流水线详设与模型卡模板 | P2 | 把 §5.5 门禁变成可运行流水线 | B07 | 待办 |
 | B10 | 数据分级 × 角色权限矩阵细表 + RLS 策略测试 | P2 | 落地 §8.2、§18.3；覆盖离线训练链路 | B01 | 待办 |
@@ -77,6 +77,7 @@
 | R2.2 | 2026-11-24 | B03 Walking skeleton：合成数据串通 §18.2 十步端到端链路 | `skeleton/`（store / pipeline / run / test / README）：内存存储镜像 B01 不变量（九态白名单、四表追加写、审计 sha256 哈希链防篡改、事件幂等、租户强制）；十步全落点——阻断级 QC、快照冻结、特征版本可复现、双指标 + conformal 三档、provenance 必返 + OOD 两级（severe 拒答）、约束推荐、九态回写、门禁重训；21 项断言全过；两轮闭环演示：推荐 C-0010 → C-0006 变化、同点位预测更新、审计按推荐 id 反查时间线完整 | `d20b26b`、`7aa94cf` |
 | R2.3 | 2026-11-24 | B04 契约定义：`packages/contracts/` 固化 §4.3 与 §16.4 | 九服务 OpenAPI 3.1（prediction 全量含 §4.3 canonical 样例与 explain=deferred 降级、optimization/active-learning/generation 任务型、experiment 九态迁移、data-hub 快照冻结强一致、model-lifecycle 训练/晋升/回滚/calibration、knowledge 501 标注二期、auth-audit 判定/审计/导出）；7 个共享 schema（信封/错误 Problem Details/provenance/conformal 三档/预测结果条件语义/任务视图/通用类型）；事件目录 12 事件（补录 RecommendationIssued，消费者按一期归位，DriftDetected 投递语义收敛）+ payload $defs；零依赖校验器五类检查 PASS（POST 强制幂等头+租户头、4xx/5xx 统一 Problem Details、目录双向覆盖、红线口径、$ref 可达）；18 项契约测试全过；发现并解决 intervals 必返 vs severe 拒答的契约冲突（移出 required，改语义条件校验强制） | `9cba6f9`、`5419646` |
 | R2.4 | 2026-11-24 | B06 语义断言 + 金丝雀配方集（§16.2 / ADR-14）：`canary/` 两层静默失败探测器 | 语义断言五类（量纲范围 severe 化、可行边界、配比守恒、区间单调与自洽、OOD 一致性，违反标记降级不静默修正）；CANARY-SET-v1.0 十二条合成配方（窄脊/边界/湿度/过载等全覆盖，参考值=合成真值，容差 4.5σ——3σ 被小样本树偏差误触发，实测最大 7.8>7.5，如实记录）；八类故障注入（量纲×10、区间倒挂/非单调、OOD 绕过、值漂移、方向翻转、负组分、越窗）**拦截率 8/8=100%**，且强口径=每条金丝雀均拦截；VALUE-DRIFT/DIRECTION-FLIP 仅偏差层可抓、结构类仅断言层可抓——两层互补验证成立；金丝雀结果写审计 CanaryRun（失败→quarantine-recommended）；16 项测试全过；顺带修正骨架预测响应缺 unit 字段（对齐 B04 契约 required） | `e74ca5d`、`0ac4d47` |
+| R2.5 | 2026-11-24 | B07 版本化特征工厂（§5.1 / ADR-04）：`features/` 特征定义单一事实来源 | FeatureFactory：定义（名称/来源/变换/单位）版本化，指纹=定义内容哈希（内容寻址），transform 为训练（步骤 4/8）与服务（步骤 5/6/OOD）唯一入口；版本 FS-v1.0 对齐 B04 契约 pattern（B03 的 fs-\<hash\> 口径废止）；派生特征以命名函数注册表承载（定义可序列化入审计）；审批门=注册表外 draft 不可用；金丝雀与骨架引用同一工厂实例（DoD 达成）；注册事件 FeatureSetRegistered 补录契约目录 + payload def + §16.4；13 项测试全过；修真 bug：派生特征下输入维度校验应针对原始维度而非定义数 | 本轮提交 |
 
 **R1 具体完成**：4+1 视图矩阵与进程/开发/场景视图；超时预算与三条关键时序；10 项 FMEA 与 AI 静默失败防护；四级降级、事件目录与强弱一致边界；离线回放验证方法、故障注入与 go/no-go 检查单；代码依赖方向、walking skeleton、RLS 落地、扩展-收缩迁移、fitness function、RACI。**未改变** v2.0 的任何架构立场与 MVP 范围。
 
@@ -84,15 +85,15 @@
 
 ---
 
-## 6. 下一轮（R2.5）建议
+## 6. 下一轮（R2.6）建议
 
-**单一主矛盾**：可信度防线（B06）已落成代码，剩余主矛盾是「特征口径的单一事实来源」——骨架与金丝雀都在用各自内联的特征定义，B07 是契约（B04）之后防 training-serving skew 的最后一块地基。
+**单一主矛盾**：特征单一来源（B07）已落地，剩余主矛盾是「训练→门禁→注册→灰度流水线」——模型从训练完成到可服务的晋升路径目前只存在于文档（§5.5）与骨架的简化步骤 8，B09 把它变成可运行的流水线定义与模型卡模板。
 
-**B07 版本化特征工厂最小实现**（依赖 B01、B03 已满足）：把 `skeleton/pipeline.py` 步骤 3 的特征版本哈希升级为独立模块——特征定义（名称/归一化/派生规则）版本化、训练与服务共用同一实现、特征集变更走审批。B03 已含特征版本哈希，增量小。
+**B09 训练 → 门禁 → 注册 → 灰度流水线详设 + 模型卡模板**（依赖 B07 已满足）：把 §5.5 门禁（覆盖率、违规率、RMSE 漂移）扩展为可执行检查序列 + model_registry 状态机（trained → gate_pending → shadow → canary → promoted / rejected），模型卡模板按 §8.4 溯源链字段落 Markdown 模板。
 
-**备选**：B05 前端技术栈选型；B08 契约测试接入 CI（validate.py + 四套件已有，剩流水线编排）。
+**备选**：B08 契约测试接入 CI（四套件 + 校验器已齐，剩流水线编排，等 CI 环境就绪）；B05 前端技术栈选型。
 
-验收（DoD）：特征定义单一来源，骨架训练与金丝雀预测引用同一 feature_set 实现；特征变更后指纹变化且审计可查。
+验收（DoD）：模型卡模板可由骨架管线自动填充 ≥80% 字段；状态机白名单镜像 DDL；金丝雀（B06）作为 canary 阶段的门禁被引用。
 
 **R2 全程不做**：真实数据接入、多租户管理 UI、LIMS 对接、知识图谱、生成模型、GNN、私有 LLM。
 

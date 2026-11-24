@@ -8,7 +8,7 @@
 
 ## 当前状态
 
-> **R2 进行中**：核心表 DDL、离线回放框架、walking skeleton（三条 P0）、服务契约包（B04）与语义断言 + 金丝雀配方集（B06）已落地；下一目标 B07 版本化特征工厂。
+> **R2 进行中**：核心表 DDL、离线回放框架、walking skeleton（三条 P0）、服务契约包（B04）、语义断言 + 金丝雀配方集（B06）与版本化特征工厂（B07）已落地；下一目标 B09 训练→门禁→注册→灰度流水线。
 
 | 项目 | 状态 |
 |---|---|
@@ -19,6 +19,7 @@
 | 服务与 API 契约 | 九服务 OpenAPI 3.1 + 事件信封/payload JSON Schema + 零依赖校验器与 18 项契约测试（`packages/contracts/`，B04） |
 | Walking skeleton | **已打通**：`skeleton/`（§18.2 十步端到端 + 21 项断言全过；两轮闭环演示推荐变化与审计反查命中；见 [`skeleton/README.md`](skeleton/README.md)） |
 | 静默失败防线 | **已落地**：`canary/`（语义断言五类 + 金丝雀集 v1.0 十二条合成配方；八类故障注入拦截率 100%；见 [`canary/README.md`](canary/README.md)） |
+| 特征单一来源 | **已落地**：`features/`（版本化特征工厂，训练与服务共用 transform，指纹入审计，变更走审批；见 [`features/README.md`](features/README.md)） |
 | CI / 部署清单 | 换行规范已落地，静态守护待建（B13） |
 
 ---
@@ -37,6 +38,7 @@
 | [`skeleton/README.md`](skeleton/README.md) | Walking skeleton（B03）：§18.2 十步端到端链路逐条对照、镜像不变量清单与简化升级路径 |
 | [`packages/contracts/README.md`](packages/contracts/README.md) | 服务契约包（B04）：九服务 OpenAPI 3.1 + 事件目录/信封 schema + 校验器五类检查与红线口径速查 |
 | [`canary/README.md`](canary/README.md) | 语义断言 + 金丝雀配方集（B06）：断言类别与静默失败来源对照、金丝雀覆盖剖面、八类故障注入拦截证据与生产集成路径 |
+| [`features/README.md`](features/README.md) | 版本化特征工厂（B07）：口径表（版本/指纹/变换/审批）、13 项验收测试覆盖与生产集成路径 |
 | [`docs/architecture/B04-CHANGE-NOTES.md`](docs/architecture/B04-CHANGE-NOTES.md) | R2.3 变更说明：契约包交付清单、10 条关键契约决策、目录补录澄清、契约自冲突修正与验收结果 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 

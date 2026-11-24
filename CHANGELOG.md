@@ -5,6 +5,26 @@
 
 ---
 
+## [R2.5 交付] · 2026-11-24
+
+**主题**：B07 版本化特征工厂——特征定义单一事实来源，落实 ADR-04 防 training-serving skew。
+
+### 新增
+
+- `features/` 包：FeatureFactory（定义版本化 + 内容指纹 + 统一 transform 入口 + 审批注册表）、13 项验收测试、README
+- 骨架管线训练（步骤 4/8）与服务（步骤 5/6/OOD）全部改走工厂 transform；金丝雀与骨架引用同一工厂实例（DoD：单一来源达成）
+- 契约包补录 `FeatureSetRegistered` 事件（目录 + payload def + §16.4 表行）
+
+### 变更
+
+- feature_set 版本号由 `fs-<hash>` 改为 `FS-v1.0`，对齐 B04 契约 `common.FeatureSetVersion` pattern；注册行新增 fingerprint 字段
+
+### 修正
+
+- 真实 bug：含派生特征时 transform 的输入维度校验错用定义数（应为原始特征数），已修并有测试覆盖
+
+---
+
 ## [R2.4 交付] · 2026-11-24
 
 **主题**：B06 语义断言 + 金丝雀配方集——静默失败两层探测器落成代码，故障拦截率 100%。

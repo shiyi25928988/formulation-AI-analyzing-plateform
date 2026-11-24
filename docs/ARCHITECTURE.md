@@ -775,6 +775,7 @@ knowledge-svc（RAG / 图谱）整体异常按 L2 同级处置：暂停知识问
 | `DataAccepted` / `DataRejected` | QC 服务 | 快照、训练编排、运营看板 | 至少一次 + 幂等 |
 | `DatasetSnapshotFrozen` | data-hub-svc | 训练编排 | 至少一次 + 幂等 |
 | `RecommendationIssued` | active-learning-svc | experiment-svc、审计 | 至少一次 + 幂等（R2.3 契约包补录：闭环状态机起点事件） |
+| `FeatureSetRegistered` | model-lifecycle-svc | prediction-svc、审计 | 至少一次 + 幂等 |
 | `ModelTrained` / `ModelPromoted` | model-lifecycle-svc | 在线推理、审计、通知 | 至少一次 + 幂等 |
 | `CanaryFailed` | model-lifecycle-svc | 通知、告警、灰度回退 | 至少一次 + 幂等 |
 | `DriftDetected` | 监控 | 训练编排、告警 | 至少一次，允许重复 |
