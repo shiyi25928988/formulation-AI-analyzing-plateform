@@ -18,8 +18,6 @@
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 import random
 import sys
@@ -31,6 +29,7 @@ if _ROOT not in sys.path:
 
 from tests.replay import synthetic as world          # noqa: E402  合成世界单一来源
 from tests.replay.surrogate import BaggedEnsemble    # noqa: E402  代理模型替身
+from features import factory as ffactory             # noqa: E402  特征单一来源（B07）
 from skeleton.store import (                         # noqa: E402
     INTERVAL_LEVELS, StoreError,
 )
@@ -99,6 +98,7 @@ class SkeletonPipeline:
         self.calib = {}                   # metric_code -> {level: half_width}
         self.eval_rows = None             # 固定评估集（门禁可比性）
         self.feature_set_version = None
+        self.feature_factory = None       # B07：版本化特征工厂实例
         self.snapshot_id = None
         self.model_version = None
         self.prev_eval_rmse = None
@@ -160,21 +160,28 @@ class SkeletonPipeline:
                         event_id=f"SNAP-{label}")
         return snap["id"]
 
-    # ---- 步骤 3：特征工厂（版本固定 + 可复现） ------------------------------
+    # ---- 步骤 3：特征工厂（单一事实来源 + 版本化 + 审批注册，B07） ----------
 
     def step3_feature_set(self) -> str:
-        """feature_set_version = 规范化特征清单 + 归一参数的稳定哈希。
-        同一输入两次调用必须得到同一版本（ADR-04 防训练/推理漂移）。"""
-        basis = {"features": world.FEATURE_NAMES, "normalization": "as-recorded",
-                 "impl": "skeleton-feature-factory-v1"}
-        h = hashlib.sha256(json.dumps(basis, sort_keys=True).encode()).hexdigest()[:12]
-        self.feature_set_version = f"fs-{h}"
-        if not self.store.where("feature_set", version=self.feature_set_version):
+        """feature_set_version 取自版本化特征工厂（features.factory，
+        训练与服务共用同一实现）。版本 FS-vX.Y 对齐 B04 契约 pattern；
+        指纹 = 定义内容哈希，注册行 + 审计事件可反查（ADR-04）。"""
+        factory = ffactory.get_approved()          # 未注册（draft）即拒绝
+        self.feature_factory = factory
+        fp = factory.fingerprint()
+        if not self.store.where("feature_set", version=factory.version):
             self.store.insert("feature_set", {
                 "tenant_id": self.store.tenant_id,
-                "version": self.feature_set_version,
-                "features": world.FEATURE_NAMES})
-        return self.feature_set_version
+                "version": factory.version,
+                "features": factory.feature_names(),
+                "fingerprint": fp,
+                "source": "features.factory"})
+            self.store.emit("model-lifecycle-svc", "FeatureSetRegistered",
+                            {"feature_set_version": factory.version,
+                             "fingerprint": fp},
+                            event_id=f"FSREG-{factory.version}")
+        self.feature_set_version = factory.version
+        return factory.version
 
     # ---- 步骤 4：双指标训练 + conformal 三档 -------------------------------
 
@@ -187,13 +194,20 @@ class SkeletonPipeline:
         k = max(4, len(rows) // 4)
         return rows[:-k], rows[-k:]
 
+    def _feat(self, x: list[float]) -> list[float]:
+        """统一特征变换入口：训练与服务共用同一实现（B07 / ADR-04）。
+        step3 未调用时退化为恒等（仅供底层单测使用）。"""
+        if self.feature_factory is None:
+            return list(x)
+        return self.feature_factory.transform(x)
+
     def _fit_one(self, code: str, train_rows: list[dict]) -> None:
-        X = [r["x"] for r in train_rows]
+        X = [self._feat(r["x"]) for r in train_rows]
         y = [r["measured"][code] for r in train_rows]
         model = BaggedEnsemble(n_trees=25, seed=self.seed)
         model.fit(X, y)
         holdout = self.eval_rows or []
-        resid = sorted(abs(model.predict(r["x"]) - r["measured"][code])
+        resid = sorted(abs(model.predict(self._feat(r["x"])) - r["measured"][code])
                        for r in holdout)
         self.model[code] = model
         self.calib[code] = {lv: _quantile(resid, float(lv)) for lv in INTERVAL_LEVELS}
@@ -227,7 +241,7 @@ class SkeletonPipeline:
         n = len(self.eval_rows)
         if n == 0:
             return 0.0
-        sse = sum((self.model[code].predict(r["x"]) - r["measured"][code]) ** 2
+        sse = sum((self.model[code].predict(self._feat(r["x"])) - r["measured"][code]) ** 2
                   for r in self.eval_rows)
         return round(math.sqrt(sse / n), 3)
 
@@ -240,9 +254,10 @@ class SkeletonPipeline:
         rows = self._training_rows()
         if not rows:
             return "severe"
+        cols_t = [self._feat(r["x"]) for r in rows]   # 特征空间与训练一致（B07）
         outside = 0
         for i in range(len(x)):
-            col = [r["x"][i] for r in rows]
+            col = [t[i] for t in cols_t]
             lo, hi = min(col), max(col)
             rng_ = max(hi - lo, 1e-9)
             if x[i] < lo or x[i] > hi:
@@ -254,6 +269,7 @@ class SkeletonPipeline:
         return "advisory" if outside == 1 else "none"
 
     def step5_predict(self, x: list[float]) -> dict:
+        x = self._feat(list(x))          # 与训练同一变换（B07 单一来源）
         ood = self._ood_level(x)
         result = {"request_id": f"REQ-{self.rng.randrange(10**9):09d}",
                   "provenance": {"model_version": self.model_version,
@@ -293,7 +309,7 @@ class SkeletonPipeline:
                 and world.is_feasible(r["x"])]
         scored = []
         for r in pool:
-            std = self.model["tg_like"].predict_std(r["x"])
+            std = self.model["tg_like"].predict_std(self._feat(r["x"]))
             scored.append({"candidate_id": r["candidate_id"],
                            "fv_id": r["id"], "x": r["x"],
                            "score": round(std, 4)})
