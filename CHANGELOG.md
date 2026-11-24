@@ -98,6 +98,8 @@
 | `8c23961` | `docs: add ADR-19 layered LLM access with text-only boundary` —— §7.2 私有 LLM 接入口径表 + ADR-19 |
 | `f5648e6` | `docs: add one-page LLM access handoff brief for phase-2 team` —— 二期 LLM 接入一页衔接摘要 |
 | `256fea0` | `docs: add UI prototype v0.1 with design tokens and figma handoff notes` —— 界面原型 v0.1（5 界面 + 设计令牌 + Figma 交接） |
+| `307cbe5` | `feat(db): add core schema DDL with RLS and state-machine triggers (B01)` —— 核心表 DDL + 回滚脚本 + 迁移约定（24 表 / 10 枚举 / RLS / 状态机触发器） |
+| `a624611` | `feat(replay): add offline replay framework with baseline report and sync R2.1 docs (B02)` —— 零依赖离线回放框架 + 12 种子基线报告 + R2.1 文档同步 + B01/B02 验收结论 + 应用架构图 |
 
 ---
 
