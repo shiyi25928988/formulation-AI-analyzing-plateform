@@ -211,6 +211,8 @@
 | `5419646` | `docs: sync R2.3 contract package into architecture set (B04)` —— §4.3/§16.4 契约包指针 + 迭代记录 R2.3 + CHANGELOG/README 同步 |
 | `e74ca5d` | `feat(canary): add semantic assertions and canary formula set with fault injection (B06)` —— 语义断言五类 + 金丝雀集 v1.0（12 条合成配方）+ 八类故障注入拦截 100% + 运行器/审计事件 + 16 项测试（9 文件 / +707 行） |
 | `0ac4d47` | `docs: sync R2.4 canary acceptance into iteration docs (B06)` —— 迭代记录 R2.4 + CHANGELOG/README 同步 |
+| `318d31e` | `feat(features): add versioned feature factory with approval registry (B07)` —— 特征单一来源：版本化定义 + 内容指纹 + 统一 transform + 审批注册表（7 文件 / +649 行，含契约 FeatureSetRegistered 补录与骨架全链路接线） |
+| `c1e1771` | `docs: sync R2.5 feature factory into architecture set (B07)` —— §16.4 加行 + 迭代记录 R2.5 + CHANGELOG/README 同步 |
 
 ---
 
