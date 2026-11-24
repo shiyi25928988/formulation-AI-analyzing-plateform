@@ -267,6 +267,7 @@ POST /api/v1/predict
 - **provenance 必返**，且写入审计日志，与 §3.5 呼应。
 - 所有 POST 支持 `Idempotency-Key`；异步任务返回 `task_id`，状态机为 `queued → running → succeeded / failed / cancelled`，失败保留中间产物供排查。
 - 版本化路径 `/api/v1`，破坏性变更升版本，旧版本至少并行 2 个迭代周期。
+- 本节的可执行契约已固化为 `packages/contracts/openapi/`（九服务 OpenAPI 3.1，B04），以契约为准，本节示意仅作导引。
 
 ### 4.4 一致性策略
 
@@ -773,12 +774,15 @@ knowledge-svc（RAG / 图谱）整体异常按 L2 同级处置：暂停知识问
 | `ExperimentCompleted` | experiment-svc | QC 服务 | 至少一次 + 幂等 |
 | `DataAccepted` / `DataRejected` | QC 服务 | 快照、训练编排、运营看板 | 至少一次 + 幂等 |
 | `DatasetSnapshotFrozen` | data-hub-svc | 训练编排 | 至少一次 + 幂等 |
+| `RecommendationIssued` | active-learning-svc | experiment-svc、审计 | 至少一次 + 幂等（R2.3 契约包补录：闭环状态机起点事件） |
 | `ModelTrained` / `ModelPromoted` | model-lifecycle-svc | 在线推理、审计、通知 | 至少一次 + 幂等 |
 | `CanaryFailed` | model-lifecycle-svc | 通知、告警、灰度回退 | 至少一次 + 幂等 |
 | `DriftDetected` | 监控 | 训练编排、告警 | 至少一次，允许重复 |
 | `ExportRequested` | BFF | 审批、脱敏、审计 | 有效恰好一次（幂等键 + 审批状态机实现） |
 
 **幂等键规范**：`(tenant_id, event_type, aggregate_id, aggregate_version)`；消费者维护已处理键表，重复投递直接返回上次结果。**重试规范**：仅幂等操作可重试，指数退避 + 抖动，最大 5 次后入死信队列；死信必须可人工重放。**对账**：每日比对事件流与投影状态（实验数、快照数、模型版本数、审计条数），差异写入告警并生成对账报告，不允许人工直接改库消除差异。事件 schema 升版本时消费者需兼容至少两个版本。
+
+> **本节与 §4.3 的可执行形态**已固化为契约包 `packages/contracts/`（B04）：九服务 OpenAPI 3.1 + 事件信封/payload JSON Schema + 事件目录 + 零依赖校验器（`tools/validate.py`，红线检查含 provenance 必返、三档区间、OOD 两级、九态白名单）与 18 项契约测试。目录相对本表有三处补录/澄清（RecommendationIssued、消费者名按一期服务归位、DriftDetected 投递语义收敛），见 `packages/contracts/README.md`。
 
 ### 16.5 强一致与最终一致的边界
 

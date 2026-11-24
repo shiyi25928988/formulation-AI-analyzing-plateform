@@ -5,6 +5,29 @@
 
 ---
 
+## [R2.3 交付] · 2026-11-24
+
+**主题**：B04 契约定义——`packages/contracts/` 固化 §4.3 API 契约与 §16.4 事件目录，九服务接口全部定型，R2 第四件落地。
+
+### 新增
+
+- **九服务 OpenAPI 3.1**（`packages/contracts/openapi/`）：`prediction-svc` 全量（§4.3 canonical 样例入库、批量走 MinIO 引用、explain=deferred 降级对齐 §15.2）；`optimization-svc`（Pareto/约束检查，不直接调模型）；`active-learning-svc`（推荐批次，发布 RecommendationIssued，severe 点强制复核）；`generation-svc`（可执行性过滤一期，生成 501 三期）；`experiment-svc`（九态迁移，非法迁移 409 = `/errors/invalid-transition`）；`data-hub-svc`（导入含失败留痕红线参数、快照冻结强一致）；`model-lifecycle-svc`（训练/晋升门禁/回滚 + `/calibration/*` F1 归口 + 漂移订阅）；`knowledge-svc`（/search 一期，/qa 与 /graph 501 二期，禁 Cypher 直传 ADR-20）；`auth-audit-svc`（authz 判定 / 审计查询 / 哈希链校验 / 导出审批）。
+- **共享 schema 7 件**（`schemas/`）：事件统一信封（§16.4 十字段）、统一错误（RFC 9457）、provenance 三元组必返、conformal 三档（0.50/0.70/0.90）、预测结果（OOD 条件语义）、异步任务（四队列）、通用类型（含九态枚举镜像 DDL 白名单）。
+- **事件目录 12 事件 + payload**（`events/`）：§16.4 全表补录 `RecommendationIssued`（R2.2 骨架已用）；消费者名按一期服务归位；`DriftDetected` 投递语义收敛为 at-least-once-idempotent。
+- **零依赖校验器**（`tools/validate.py`）：五类检查——JSON/关键字子集、OpenAPI 结构（POST 强制 Idempotency-Key + X-Tenant-Id、4xx/5xx 统一 Problem Details）、事件目录与 $defs 双向覆盖 + 最小样例自校验、红线口径（provenance/三档/OOD 两级/九态/四队列）、$ref 相对可达。
+- **契约测试 18 项**（`tools/test_contracts.py`）：canonical 样例、severe 拒答拦截、advisory 标记强制、信封 const/幂等键长度、任务枚举、九服务头齐全。
+
+### 修正
+
+- 发现并解决契约自冲突：`intervals` 必返 vs severe 拒答须缺省——`intervals` 移出 required，改为**语义条件校验**（`semantic_check_prediction`）强制：severe 缺省 value/intervals/explanation、advisory 强制 `advisory_only=true`、返值必须三档齐全。
+- 校验器自身 3 处 bug（关键字遍历误伤属性名、最小样例不满足 pattern、红线检查未解析 $ref）修复后回归通过。
+
+### 保持不变
+
+架构立场（§1 排序、ADR-01/02/03/12/19/20）、R2 范围；§18.1 开发视图 `packages/contracts/` 路径与本次落位一致。
+
+---
+
 ## [ADR-20 定论] · 2026-11-24
 
 **主题**：图谱存储选型定论——Neo4j 社区版 + 四条绕行约束（二期启用），附录 B 开放问题再收一条。

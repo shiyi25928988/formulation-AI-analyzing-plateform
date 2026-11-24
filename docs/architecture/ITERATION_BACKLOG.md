@@ -49,7 +49,7 @@
 | B01 | 核心表完整 DDL + 迁移脚本（`db/migrations/001_init_schema.sql`） | P0 | 把 §3 领域模型落成可执行结构；枚举、约束、索引、RLS 策略一次到位 | §3、§18.3、§18.4 | **R2 已落地**（静态校验通过；Docker 执行验证待办，见 `db/migrations/README.md`） |
 | B02 | 离线回放框架与基线报告（`tests/replay/`） | P0 | **在花实验预算之前**证明主动学习有效；同时暴露幸存者偏差与标签泄漏 | 无外部前置（幸存者偏差诊断已内置，附录 B.1 已定） | **R2 已落地**（12 种子合成回放基线报告已产出） |
 | B03 | Walking skeleton 端到端链路（§18.2 十步） | P0 | 先打通三条主线，暴露集成问题；用合成数据即可 | B01、B04 | **R2.2 已落地**（`skeleton/`：十步全落点 + 21 项断言全过 + 两轮闭环演示，推荐变化与审计反查均命中；见 `skeleton/README.md`） |
-| B04 | 契约定义：OpenAPI + 事件信封 / JSON Schema（`packages/contracts/`） | P1 | 固化 §4.3 与 §16.4，支撑契约测试与 OpenAPI diff | 无 | 待办 |
+| B04 | 契约定义：OpenAPI + 事件信封 / JSON Schema（`packages/contracts/`） | P1 | 固化 §4.3 与 §16.4，支撑契约测试与 OpenAPI diff | 无 | **R2.3 已落地**（九服务 OpenAPI 3.1 + 7 共享 schema + 12 事件目录/payload + 零依赖校验器 PASS + 18 项契约测试全过；含 §16.4 补录 RecommendationIssued；见 `packages/contracts/README.md`） |
 | B05 | 数据导入 + QC 阻断级规则引擎 | P1 | 数据治理是一期真正瓶颈，决定可用样本量 | B01 | 待办 |
 | B06 | 语义断言 + 金丝雀配方集实现 | P1 | 防 §16.2 静默失败，成本最低的可信度投入 | B01、B04 | 待办 |
 | B07 | 版本化特征工厂 + Feature Store 最小实现 | P1 | 落实 ADR-04，防止 training-serving skew | B01、B04 | 待办 |
@@ -75,6 +75,7 @@
 | R1.6 | 2026-11-23 | 功能设计 v0.1 与 F1/F2 详设，团队评审修正 | `FEATURE-DESIGN-v0.1.md`（F1–F6、F10）、`F01-F02-DETAIL-DESIGN.md`；software-adhe-review 评审（P0×6/P1×13/P2×16）后统一修正：OOD 两级处置统一、conformal 三档入 §4.3/§5.2、§4.3 分位修正、§11 功能细化登记、`CanaryFailed` 事件、fidelity 枚举、引用/表名/角色口径修正、原型 S1/S2/S5 对齐 | `5a248a7` 及配套设计文档提交 |
 | R2.1 | 2026-11-24 | B01 核心表 DDL + B02 离线回放框架（R2 前两件，B03 待收尾） | `db/migrations/001_init_schema.sql` + 回滚脚本（24 表 / 10 枚举 / RLS 全覆盖 / 状态机与追加写触发器，静态机械校验通过）；`tests/replay/` 零依赖回放框架（三步诊断、T0 冻结、三基线、双模式、bootstrap CI）+ 10 项测试全过 + 12 种子合成基线报告：对 random 降 84.6%（CI [44.6%, 89.4%]）、对 historical 降 88.9%（CI [65.4%, 94.5%]）通过门禁，对 greedy 未过（-，真实发现不修饰） | `307cbe5`、`a624611` |
 | R2.2 | 2026-11-24 | B03 Walking skeleton：合成数据串通 §18.2 十步端到端链路 | `skeleton/`（store / pipeline / run / test / README）：内存存储镜像 B01 不变量（九态白名单、四表追加写、审计 sha256 哈希链防篡改、事件幂等、租户强制）；十步全落点——阻断级 QC、快照冻结、特征版本可复现、双指标 + conformal 三档、provenance 必返 + OOD 两级（severe 拒答）、约束推荐、九态回写、门禁重训；21 项断言全过；两轮闭环演示：推荐 C-0010 → C-0006 变化、同点位预测更新、审计按推荐 id 反查时间线完整 | `d20b26b`、`7aa94cf` |
+| R2.3 | 2026-11-24 | B04 契约定义：`packages/contracts/` 固化 §4.3 与 §16.4 | 九服务 OpenAPI 3.1（prediction 全量含 §4.3 canonical 样例与 explain=deferred 降级、optimization/active-learning/generation 任务型、experiment 九态迁移、data-hub 快照冻结强一致、model-lifecycle 训练/晋升/回滚/calibration、knowledge 501 标注二期、auth-audit 判定/审计/导出）；7 个共享 schema（信封/错误 Problem Details/provenance/conformal 三档/预测结果条件语义/任务视图/通用类型）；事件目录 12 事件（补录 RecommendationIssued，消费者按一期归位，DriftDetected 投递语义收敛）+ payload $defs；零依赖校验器五类检查 PASS（POST 强制幂等头+租户头、4xx/5xx 统一 Problem Details、目录双向覆盖、红线口径、$ref 可达）；18 项契约测试全过；发现并解决 intervals 必返 vs severe 拒答的契约冲突（移出 required，改语义条件校验强制） | 本轮提交 |
 
 **R1 具体完成**：4+1 视图矩阵与进程/开发/场景视图；超时预算与三条关键时序；10 项 FMEA 与 AI 静默失败防护；四级降级、事件目录与强弱一致边界；离线回放验证方法、故障注入与 go/no-go 检查单；代码依赖方向、walking skeleton、RLS 落地、扩展-收缩迁移、fitness function、RACI。**未改变** v2.0 的任何架构立场与 MVP 范围。
 
@@ -82,13 +83,15 @@
 
 ---
 
-## 6. 下一轮（R2.3）建议
+## 6. 下一轮（R2.4）建议
 
-**单一主矛盾**：R2 前三件（B01/B02/B03）已落地、闭环已打通，剩余主矛盾是「把骨架验证过的链路语义固化成正式契约」。
+**单一主矛盾**：契约（B04）与骨架（B03）齐备，剩余主矛盾是「把可信度防线从文档落成代码」——静默失败是当前最便宜的投入方向。
 
-**B04 契约定义**（`packages/contracts/`）：OpenAPI（§4.3 的 `/predict` 等已验证契约）+ 事件信封 / JSON Schema（§16.4 事件目录，骨架已按其语义实现）。骨架暴露的集成语义（必返字段、两级 OOD、任务状态机）经 B03 验证后正好沉淀为契约，供 B05–B08 并行开发不跑偏。
+**B06 语义断言 + 金丝雀配方集**（依赖 B01、B04 已满足）：物理一致性断言（tg < 分解温度等）+ 金丝雀配方集版本化（§17.3：合成/脱敏数据，绝不拿真实配方做 fixture）；验收 = 对故意引入物理矛盾的模型输出 100% 拦截。
 
-验收（DoD）：OpenAPI 覆盖骨架十条链路的同步接口；事件 Schema 覆盖 §16.4 目录；契约可被 `skeleton/` 与后续服务同时引用（单一事实来源）。
+**备选**：B07 版本化特征工厂最小实现（B03 已含特征版本哈希，增量小）；B05 前端技术栈选型。
+
+验收（DoD）：语义断言进 prediction 响应链路并计入审计；金丝雀集回归进 model-lifecycle 门禁；全部走 `packages/contracts` 契约。
 
 **R2 全程不做**：真实数据接入、多租户管理 UI、LIMS 对接、知识图谱、生成模型、GNN、私有 LLM。
 

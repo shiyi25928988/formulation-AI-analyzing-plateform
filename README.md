@@ -8,7 +8,7 @@
 
 ## 当前状态
 
-> **R2 进行中**：核心表 DDL、离线回放框架与 walking skeleton 已落地（R2 三条 P0 全部完成），契约定义为下一步（B04）。
+> **R2 进行中**：核心表 DDL、离线回放框架、walking skeleton（三条 P0）与服务契约包（B04）已落地；下一目标 B06 语义断言 + 金丝雀配方集。
 
 | 项目 | 状态 |
 |---|---|
@@ -16,7 +16,7 @@
 | 迭代机制 | 已建立，见 [`docs/architecture/ITERATION_BACKLOG.md`](docs/architecture/ITERATION_BACKLOG.md) |
 | 领域模型 / DDL | **已落地**：`db/migrations/001_init_schema.sql`（24 表 / 10 枚举 / RLS / 状态机触发器，静态校验通过；Docker 执行验证待办） |
 | 离线回放框架 | **已落地**：`tests/replay/`（零依赖纯标准库；幸存者偏差诊断 + 三基线 + bootstrap CI；12 种子合成回放基线报告已产出） |
-| 服务与 API 契约 | 已定义边界与响应格式，契约文件待落地（B04） |
+| 服务与 API 契约 | 九服务 OpenAPI 3.1 + 事件信封/payload JSON Schema + 零依赖校验器与 18 项契约测试（`packages/contracts/`，B04） |
 | Walking skeleton | **已打通**：`skeleton/`（§18.2 十步端到端 + 21 项断言全过；两轮闭环演示推荐变化与审计反查命中；见 [`skeleton/README.md`](skeleton/README.md)） |
 | CI / 部署清单 | 换行规范已落地，静态守护待建（B13） |
 
@@ -34,6 +34,7 @@
 | [`docs/design/F01-F02-DETAIL-DESIGN.md`](docs/design/F01-F02-DETAIL-DESIGN.md) | F1 校准追踪 + F2 版本对比的工程详设（已评审）：计算口径、API 契约、数据与物化方案、组件与状态、边界与验收 |
 | [`tests/replay/README.md`](tests/replay/README.md) | 离线回放框架使用说明：§17.2 全口径实现、两种回放模式、判读规则与升级路径 |
 | [`skeleton/README.md`](skeleton/README.md) | Walking skeleton（B03）：§18.2 十步端到端链路逐条对照、镜像不变量清单与简化升级路径 |
+| [`packages/contracts/README.md`](packages/contracts/README.md) | 服务契约包（B04）：九服务 OpenAPI 3.1 + 事件目录/信封 schema + 校验器五类检查与红线口径速查 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 
 架构文档附录 B 现含 **2 项已定决策与 10 项待客户确认的开放问题**。已定决策一：「历史是否保留失败与取消记录」依据行业证据（失败实验极少被数字化，Raccuglia et al., *Nature* 2016）按「历史库大概率不完整」处理——离线回放内置幸存者偏差诊断，新采集数据强制全记录失败与取消。已定决策二：「图谱存储选型」定论 Neo4j 社区版 + 四条绕行约束（ADR-20），配方主数据与血缘强制留在 PostgreSQL + RLS。开放问题中「历史数据可用样本量」仍决定模型选型是否调整。
