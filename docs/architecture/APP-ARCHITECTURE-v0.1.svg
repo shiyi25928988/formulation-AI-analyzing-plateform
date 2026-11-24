@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 930" width="100%" role="img">
+  <title>AdheFormAI 应用架构 v2.1</title>
+  <desc>分层应用架构：用户交互层、编排网关、应用服务层、AI 核心引擎与知识数据中台、基础设施与集成层，含控制面/数据面/实验面三条主线标注</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <text x="40" y="50" font-size="14" font-weight="500" fill="#2C2C2A" font-family="sans-serif">AdheFormAI 应用架构 v2.1 — 分层 × 三条主线</text>
+
+  <rect x="40" y="70" width="600" height="118" rx="20" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+  <text x="56" y="94" font-size="12" font-weight="500" fill="#444441" font-family="sans-serif">L1 · 用户交互层</text>
+  <text x="624" y="94" font-size="11" fill="#888780" text-anchor="end" font-family="sans-serif">多租户 · 角色视图 · 交互式 Pareto</text>
+  <g font-family="sans-serif" font-size="12" fill="#2C2C2A" text-anchor="middle">
+    <rect x="56" y="124" width="104" height="44" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="108" y="150" dominant-baseline="central">配方工作台</text>
+    <rect x="172" y="124" width="104" height="44" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="224" y="150" dominant-baseline="central">版本对比·Pareto</text>
+    <rect x="288" y="124" width="104" height="44" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="340" y="150" dominant-baseline="central">实验台·DoE</text>
+    <rect x="404" y="124" width="104" height="44" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="456" y="150" dominant-baseline="central">知识中心</text>
+    <rect x="520" y="124" width="104" height="44" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="572" y="150" dominant-baseline="central">管理控制台</text>
+  </g>
+
+  <path d="M340 188 L340 204" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="352" y="202" font-size="11" fill="#888780" font-family="sans-serif">HTTPS · REST + WebSocket（任务进度）</text>
+
+  <rect x="40" y="210" width="600" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="340" y="232" font-size="13" font-weight="500" fill="#3C3489" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">编排网关 / BFF（auth-audit-svc）：鉴权 · 限流 · 幂等 · 请求追踪 · 结果缓存</text>
+
+  <path d="M340 254 L340 266" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="270" width="600" height="176" rx="20" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+  <text x="56" y="292" font-size="12" font-weight="500" fill="#444441" font-family="sans-serif">L2 · 应用服务层（无状态，水平扩展）</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <g>
+      <rect x="48" y="306" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="49" y="307" width="4" height="54" fill="#378ADD"/>
+      <text x="118" y="328" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">prediction-svc</text>
+      <text x="118" y="348" font-size="11" fill="#888780" dominant-baseline="central">无状态 · 在线推理</text>
+    </g>
+    <g>
+      <rect x="198" y="306" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="199" y="307" width="4" height="54" fill="#378ADD"/>
+      <text x="268" y="328" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">optimization-svc</text>
+      <text x="268" y="348" font-size="11" fill="#888780" dominant-baseline="central">多目标 · Pareto</text>
+    </g>
+    <g>
+      <rect x="348" y="306" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="349" y="307" width="4" height="54" fill="#378ADD"/>
+      <text x="418" y="328" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">active-learning-svc</text>
+      <text x="418" y="348" font-size="11" fill="#888780" dominant-baseline="central">下一批实验点</text>
+    </g>
+    <g>
+      <rect x="498" y="306" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="499" y="307" width="4" height="54" fill="#378ADD"/>
+      <text x="568" y="328" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">generation-svc</text>
+      <text x="568" y="348" font-size="11" fill="#888780" dominant-baseline="central">逆向候选 · 过滤</text>
+    </g>
+    <g>
+      <rect x="48" y="376" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="49" y="377" width="4" height="54" fill="#D85A30"/>
+      <text x="118" y="398" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">experiment-svc</text>
+      <text x="118" y="418" font-size="11" fill="#888780" dominant-baseline="central">实验状态机 · 回写</text>
+    </g>
+    <g>
+      <rect x="198" y="376" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="199" y="377" width="4" height="54" fill="#0F6E56"/>
+      <text x="268" y="398" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">data-hub-svc</text>
+      <text x="268" y="418" font-size="11" fill="#888780" dominant-baseline="central">主数据 · 血缘 · 快照</text>
+    </g>
+    <g>
+      <rect x="348" y="376" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="349" y="377" width="4" height="54" fill="#0F6E56"/>
+      <text x="418" y="398" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">knowledge-svc</text>
+      <text x="418" y="418" font-size="11" fill="#888780" dominant-baseline="central">RAG · 图谱</text>
+    </g>
+    <g>
+      <rect x="498" y="376" width="140" height="56" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><rect x="499" y="377" width="4" height="54" fill="#534AB7"/>
+      <text x="568" y="398" font-size="11" font-weight="500" fill="#2C2C2A" dominant-baseline="central">model-lifecycle-svc</text>
+      <text x="568" y="418" font-size="11" fill="#888780" dominant-baseline="central">训练 · 门禁 · 灰度</text>
+    </g>
+  </g>
+
+  <path d="M118 446 L118 474" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="126" y="466" font-size="11" fill="#888780" font-family="sans-serif">同步推理 gRPC</text>
+  <path d="M498 446 L498 474" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="506" y="466" font-size="11" fill="#888780" font-family="sans-serif">异步任务 · 事件</text>
+
+  <rect x="40" y="480" width="290" height="160" rx="12" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+  <text x="56" y="502" font-size="12" font-weight="500" fill="#0C447C" font-family="sans-serif">L3 · AI 核心引擎</text>
+  <g font-family="sans-serif" font-size="12" fill="#2C2C2A">
+    <text x="56" y="528">特征工厂（版本化 · 可复现）</text>
+    <text x="56" y="550">多任务预测 + conformal 三档区间</text>
+    <text x="56" y="572">OOD 两级处置（advisory / severe）</text>
+    <text x="56" y="594">优化 · 主动学习 · 条件生成</text>
+    <text x="56" y="616">模型生命周期与注册中心</text>
+  </g>
+
+  <rect x="350" y="480" width="290" height="160" rx="12" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="366" y="502" font-size="12" font-weight="500" fill="#085041" font-family="sans-serif">L3′ · 知识与数据中台</text>
+  <g font-family="sans-serif" font-size="12" fill="#2C2C2A">
+    <text x="366" y="528">配方库 · 性能库 · 原材料库</text>
+    <text x="366" y="550">文献 / 专利库 · 知识图谱</text>
+    <text x="366" y="572">向量索引（BGE-M3）</text>
+    <text x="366" y="594">版本 · 血缘 · 质量规则</text>
+    <text x="366" y="616">多保真度标签（fidelity）</text>
+  </g>
+
+  <path d="M185 640 L185 654" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M495 640 L495 654" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="660" width="290" height="52" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/>
+  <text x="185" y="678" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" font-family="sans-serif">事件总线（RabbitMQ）</text>
+  <text x="185" y="698" font-size="11" fill="#888780" text-anchor="middle" font-family="sans-serif">至少一次 + 幂等 · 事件溯源</text>
+  <rect x="350" y="660" width="290" height="52" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/>
+  <text x="495" y="678" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" font-family="sans-serif">异步 Worker（Celery）</text>
+  <text x="495" y="698" font-size="11" fill="#888780" text-anchor="middle" font-family="sans-serif">特征计算 · 批量预测 · 训练触发</text>
+
+  <path d="M340 712 L340 724" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="730" width="600" height="130" rx="20" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+  <text x="56" y="752" font-size="12" font-weight="500" fill="#444441" font-family="sans-serif">L4 · 基础设施与集成层</text>
+  <g font-family="sans-serif" font-size="11" fill="#444441" text-anchor="middle">
+    <rect x="56" y="766" width="112" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="112" y="790" dominant-baseline="central">PostgreSQL</text>
+    <rect x="178" y="766" width="112" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="234" y="790" dominant-baseline="central">MinIO</text>
+    <rect x="300" y="766" width="130" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="365" y="790" dominant-baseline="central">Neo4j + Qdrant</text>
+    <rect x="440" y="766" width="130" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="505" y="790" dominant-baseline="central">Redis + 队列</text>
+    <rect x="56" y="812" width="190" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="151" y="836" dominant-baseline="central">LIMS · ELN · ERP 适配器</text>
+    <rect x="256" y="812" width="240" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="376" y="836" dominant-baseline="central">私有 LLM 分档部署（ADR-19 · 二期）</text>
+    <rect x="506" y="812" width="110" height="40" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="0.5"/><text x="561" y="836" dominant-baseline="central">监控 · 调度</text>
+  </g>
+
+  <g font-family="sans-serif" font-size="11">
+    <rect x="40" y="872" width="10" height="10" fill="#534AB7"/><text x="56" y="881" fill="#444441">控制面：模型版本 · 权限 · 灰度 · 审计</text>
+    <rect x="250" y="872" width="10" height="10" fill="#0F6E56"/><text x="266" y="881" fill="#444441">数据面：特征 · 血缘 · 快照</text>
+    <rect x="430" y="872" width="10" height="10" fill="#D85A30"/><text x="446" y="881" fill="#444441">实验面：推荐 → 回写 → 重训</text>
+  </g>
+  <text x="40" y="906" font-size="11" fill="#888780" font-family="sans-serif">边界原则：唯一写权限——data-hub-svc 写主数据、experiment-svc 写实验与结果，其余服务经 API / 事件消费。</text>
+</svg>

@@ -5,6 +5,28 @@
 
 ---
 
+## [R2.1 交付] · 2026-11-24
+
+**主题**：R2 前两件 P0——把领域模型落成可执行结构（B01），把 §17.2 回放方法落成可运行框架（B02）。
+
+### 新增
+
+- **`db/migrations/001_init_schema.sql` + 回滚脚本 + `db/migrations/README.md`（B01）**：24 张表（16 核心表 + `doe_design` / `quality_rule` / `prediction_log` / `constraint_set` 语义位 / `dataset_snapshot` / `calib_stat` 物化表 / `tenant` / `project`）；10 个枚举与架构口径逐一对齐（`experiment_state` 九态、`fidelity_level`、`ood_tier` 两级、`interval_level` 三档等）；`formula_version` / `audit_event` 追加写触发器；`experiment` 状态机迁移白名单触发器（QC 不过进失败样本库，不回退）；19 张业务表 RLS 全覆盖（`FORCE` + 会话变量策略）；`adhe_ml_training` 低权限训练角色（§18.3 离线链路红线）。静态机械校验通过（事务平衡、创建顺序拓扑、RLS 覆盖、枚举口径、回滚覆盖五项）；Docker 执行验证待办。
+- **`tests/replay/`（B02）**：§17.2 全口径离线回放框架，零第三方依赖（纯标准库，含 bagged CART 代理模型，气隙可运行）。幸存者偏差三步诊断 → FULL/CONSERVATIVE 两档判定（附录 B.1）；T0 point-in-time 冻结；候选池约束库重建；双模式（synthetic 实验室 / historical 只揭示真实做过的标签）；三基线（随机/历史顺序/单目标贪心）+ UCB 主动学习策略；bootstrap 95% CI 报告（未达标按 max_rounds×1.5 计罚，口径显式声明）。10 项单元测试覆盖 §17.2 四个不变量，全过。
+- **`tests/replay/reports/synthetic-baseline-2026-11-24.md` + `.json`**：12 种子合成回放基线报告。合成世界含协同增效窄脊（最优区在二维窄带，主动学习验证的经典场景）。结果：active_ucb 对 random 轮次下降 84.6%（CI [44.6%, 89.4%]）✅、对 historical 88.9%（CI [65.4%, 94.5%]）✅、对 greedy 未过门禁（中位持平，CI 宽）——**按真实结果记录不修饰**；判定 FULL 档，结论可对外引用。
+
+### 设计说明
+
+- 代理模型为浅层树集成简化替身，接口 `predict / predict_std` 与生产 LightGBM/XGBoost 适配器一致，替换不改框架。
+- 合成世界目标值经校准（可行池中约 1.9% 可达标且全部位于窄脊内），保证回放对策略质量有区分度。
+- historical 模式的固有偏差（选到未做过的点即消耗轮次）在 README 中显式文档化，是保守档结论只作内部参考的原因之一。
+
+### 保持不变
+
+架构立场（§1 排序、ADR-01/02/03/12/19）、MVP 范围、数据红线（回放框架只用合成数据，真实历史序列文件不入库）。
+
+---
+
 ## [架构 v2.1] · 2026-11-23
 
 **主题**：从「系统应该是什么」深化到「系统跑起来之后会怎样、坏了怎么办、如何证明有效、如何持续演进」。

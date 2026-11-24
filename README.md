@@ -8,15 +8,16 @@
 
 ## 当前状态
 
-> **文档先行阶段**：本仓库以架构设计文档与项目约定为起点，尚无应用代码。
+> **R2 进行中**：核心表 DDL 与离线回放框架已落地，walking skeleton（B03）为 R2 收尾目标。
 
 | 项目 | 状态 |
 |---|---|
 | 架构设计（v2.1） | 已完成，见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)；§15–§18 补齐运行期视图、故障韧性、有效性验证与演进治理 |
 | 迭代机制 | 已建立，见 [`docs/architecture/ITERATION_BACKLOG.md`](docs/architecture/ITERATION_BACKLOG.md) |
-| 领域模型 / 表结构 | 已设计到核心表级别，DDL 待细化（B01） |
+| 领域模型 / DDL | **已落地**：`db/migrations/001_init_schema.sql`（24 表 / 10 枚举 / RLS / 状态机触发器，静态校验通过；Docker 执行验证待办） |
+| 离线回放框架 | **已落地**：`tests/replay/`（零依赖纯标准库；幸存者偏差诊断 + 三基线 + bootstrap CI；12 种子合成回放基线报告已产出） |
 | 服务与 API 契约 | 已定义边界与响应格式，契约文件待落地（B04） |
-| MVP 代码 | 未开始；walking skeleton 为下一轮目标（B03） |
+| MVP 代码 | walking skeleton 待做（B03，R2 收尾目标） |
 | CI / 部署清单 | 换行规范已落地，静态守护待建（B13） |
 
 ---
@@ -31,6 +32,7 @@
 | [`docs/design/prototype-v0.1.html`](docs/design/prototype-v0.1.html) | 界面原型 v0.1（一期 MVP 范围）：5 个界面 + 设计令牌 + Figma 交接标注；二期屏灰显对应 ADR-12 范围冻结 |
 | [`docs/design/FEATURE-DESIGN-v0.1.md`](docs/design/FEATURE-DESIGN-v0.1.md) | 功能点设计 v0.1（已评审）：架构能力承接清单，7 项一期功能（校准追踪 / 版本对比 / 批量筛选 / 质量看板 / 审批工作台 / 通知中心 / 批次推荐与 Pareto 简化视图）+ 3 项二期候选池登记 |
 | [`docs/design/F01-F02-DETAIL-DESIGN.md`](docs/design/F01-F02-DETAIL-DESIGN.md) | F1 校准追踪 + F2 版本对比的工程详设（已评审）：计算口径、API 契约、数据与物化方案、组件与状态、边界与验收 |
+| [`tests/replay/README.md`](tests/replay/README.md) | 离线回放框架使用说明：§17.2 全口径实现、两种回放模式、判读规则与升级路径 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 架构版本与仓库提交的变更对照 |
 
 架构文档附录 B 现含 **1 项已定决策与 10 项待客户确认的开放问题**。已定决策：「历史是否保留失败与取消记录」依据行业证据（失败实验极少被数字化，Raccuglia et al., *Nature* 2016）按「历史库大概率不完整」处理——离线回放内置幸存者偏差诊断，新采集数据强制全记录失败与取消。开放问题中「历史数据可用样本量」仍决定模型选型是否调整。
