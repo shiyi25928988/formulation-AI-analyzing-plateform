@@ -5,6 +5,27 @@
 
 ---
 
+## [R2.8 · 保留项 1 复检：greedy 基线过回放门禁] · 2026-11-25
+
+**主题**：R2.7 验收保留项 1（greedy 策略基线未过回放门禁）复检闭环——三项根因修复后 24 种子回放**三门禁全过**。
+
+**新增**
+- `tests/replay/reports/synthetic-baseline-2026-11-25.md` / `.json`：24 种子权威回放报告快照（对 random 降 68.4% [19.9%, 75.7%]、对 historical 降 87.5% [69.0%, 88.0%]、**对 greedy 降 64.7% [28.7%, 79.1%]**；active_ucb 中位 3 轮、24 种子全达标）
+
+**变更**
+- `tests/replay/synthetic.py`：合成世界按设计意图修正——历史生成实现声明的趋势区偏好（「高温+中等填料+高固化剂」）；工艺禁忌区（temp>165 × fill>60）整片零覆盖（「高填料配高温会凝胶」的教条语义）；协同窄脊移至禁忌区深角（temp 175-190 × fill 95-120，加成 +18）；填料×温度系数 0.11→0.05 关闭噪声侥幸达标通道（非禁忌区天花板 ≤88 < 95−2σ）；校准注释以 12 种子实测更新
+- `tests/replay/replay.py`：修复框架 bug——每轮重训只累积新揭示点、丢弃 T0 冻结历史；`run_replay` 增 `init_X/init_y`（重训 = 历史 + 已揭示，§17.2 步骤 2 口径）
+- `tests/replay/strategies.py`：采集函数重设计——点估计 min-max 归一 + 外推感知 novelty（到最近已标注点距离，β=0.8）；bagged std 对「覆盖区包围的空洞」失灵的实测教训（窄脊 std 3.26 < 池均值 3.51）如实记录于 docstring
+- `tests/replay/surrogate.py`：`fit` 留存 `X_fit`（供 novelty 探索项使用）
+- `tests/replay/run_replay.py`：传递冷启动训练集；β 显式值移除（用策略默认）
+
+**文档**
+- `R2-ACCEPTANCE-SUMMARY.md`：§4 证据 1 加 R2.8 复检注记（对外引用口径以此为准）；§6 保留项 1 标记闭环（含三项根因）
+- `ITERATION_BACKLOG.md`：R2.8 迭代行 + B02 状态更新
+- 回归：六套件 120 项全过（replay 10 / lifecycle 42 / skeleton 21 / contracts 18 / canary 16 / features 13）
+
+---
+
 ## [R2.7 · R2 阶段性验收汇总] · 2026-11-25
 
 **主题**：R2（R2.1–R2.6d，28 提交）阶段性验收——见 [`R2-ACCEPTANCE-SUMMARY.md`](docs/architecture/R2-ACCEPTANCE-SUMMARY.md)。
