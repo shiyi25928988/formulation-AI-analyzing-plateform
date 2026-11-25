@@ -5,6 +5,29 @@
 
 ---
 
+## [R2.6c 交付 · B09 编排 pipeline + 模型卡] · 2026-11-25
+
+**主题**：B09 实现轮第二、三件——`LifecyclePipeline` 编排器把训练→门禁→注册→影子→灰度→晋级→回滚串成可执行流水线；模型卡渲染达成 DoD 1。一页汇报见 [`B09-ORCHESTRATION-REPORT.md`](docs/architecture/B09-ORCHESTRATION-REPORT.md)，样例卡见 [`B09-MODEL-CARD-SAMPLE.md`](docs/architecture/B09-MODEL-CARD-SAMPLE.md)。
+
+### 新增
+
+- `lifecycle/pipeline.py`：LifecyclePipeline（T0–T3 全链路编排；影子观察量 ≥30 节拍、灰度阶梯 5%→25%→100% 替身、T1 artifact 校验和 + 指纹守卫、跨代 G2 基线辅助；替身口径如实记录）
+- `lifecycle/modelcard.py`：render_model_card（8 节模板 + 字段级 auto/semi 统计，实测 auto_fill_ratio 0.8947 ≥0.80，DoD 1 达成；渲染只读，契约 GET /model-card 响应对齐）
+- `lifecycle/test_pipeline.py`（9 项）+ `lifecycle/test_modelcard.py`（8 项）
+- 汇报与样例：`B09-ORCHESTRATION-REPORT.md`（编排轮一页汇报）、`B09-MODEL-CARD-SAMPLE.md`（MV-001 渲染样例，合成数据）
+
+### 变更
+
+- `lifecycle/gates.py`：抽出 `median_shift_sigma()`，C2 灰度对照与 T2 影子对拍共用（单一事实来源）
+- `skeleton/pipeline.py`：加 `exclude_from_train`——新一代继承上一代固定评估集并排除出训练集（§3.1 G2 跨版本可比性）
+- `promote()` 落盘 metrics_json 增补 canary_gate（C1–C3 逐项结果，模型卡 §5 注记单一来源）
+
+### 质量
+
+- 回归 119 项全过：lifecycle 41 + skeleton 21 + canary 16 + features 13 + replay 10 + contracts 18
+
+---
+
 ## [R2.6 实现轮 · B09 生命周期 store + 门禁] · 2026-11-24
 
 **主题**：`lifecycle/`——把 B09 详设的状态机与门禁变成可运行代码（实现轮第一件：store + gates）。
@@ -254,6 +277,7 @@
 | `e573453` | `feat(contracts): add lifecycle events and gate/shadow/canary/model-card APIs (B09)` —— 契约补录：6 生命周期事件（目录 13→19 + payload $defs）+ 4 API（model-lifecycle-svc 5→9 paths）+ gate_report 共享结构 + §16.4 表行 |
 | `62e8cc6` | `feat(lifecycle): add model lifecycle store and gate engine (B09)` —— 生命周期实现轮第一件：五态状态机 + 六条迁移白名单（_check/_apply 分离防半迁移）+ G0–G5/C1–C3 门禁引擎 + 双口径阈值常量（lifecycle 24 + skeleton 21 + contracts 18 项测试全过） |
 | `817da34` | `docs: sync R2.6 lifecycle store and gates into iteration docs (B09)` —— 迭代记录 R2.6b + B09 状态更新 + CHANGELOG 同步 |
+| `e8743da` | `feat(lifecycle): add orchestration pipeline and model card renderer (B09)` —— 实现轮第二、三件：LifecyclePipeline 全链路编排（观察量/灰度阶梯/守卫前置）+ 模型卡渲染（auto_fill_ratio 0.8947，DoD 1 达成）+ median_shift_sigma 共用 + exclude_from_train 固定评估集（回归 119 项全过） |
 
 ---
 
