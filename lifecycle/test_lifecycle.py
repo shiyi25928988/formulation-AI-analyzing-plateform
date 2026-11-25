@@ -95,6 +95,23 @@ class TestT0Register(unittest.TestCase):
             ("canary", "deprecated"),
         })
 
+    def test_migration_002_whitelist_mirrors_store(self):
+        """DoD 2 机械绑定：migration 002 触发器白名单 == 代码白名单。
+        改动任何一侧必须同批同步另一侧（002 文件头注释同口径）。"""
+        import re
+        sql_path = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "db", "migrations",
+            "002_model_stage_guard.sql")
+        sql = open(sql_path, encoding="utf-8").read()
+        pairs = re.findall(
+            r"OLD\.stage = '(\w+)'\s+AND NEW\.stage = '(\w+)'", sql)
+        self.assertEqual({(a, b) for a, b in pairs}, ALLOWED_TRANSITIONS)
+        # INSERT 必须从 registered 起步（门禁失败=不入册，无表外脏状态）
+        self.assertIn("NEW.stage <> 'registered'", sql)
+        # 静态机械校验：单事务平衡
+        self.assertEqual(sql.count("BEGIN;"), 1)
+        self.assertEqual(sql.count("COMMIT;"), 1)
+
 
 class TestTransitions(unittest.TestCase):
     def _to_canary(self, lc, version="M-v1.0.0"):
