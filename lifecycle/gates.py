@@ -253,6 +253,23 @@ def _interval_view(pred: dict) -> list[dict]:
 
 # ---------------------------------------------------------------- canary 门禁
 
+def median_shift_sigma(pipe, prev_pipe) -> float:
+    """双版本对照替身（B09 §3.2 C2 / §2.3 T2 共用，单一事实来源）：
+    两版本对固定评估集并行推理，逐指标取中位预测偏差（σ 计），返回最大值。
+    生产替换为 KS 检验等分布检验（§16.2：分布突变即阻断，不只看聚合指标）。"""
+    probes = [r["x"] for r in (pipe.eval_rows or [])]
+    worst = 0.0
+    for code in METRICS:
+        a = [next(p["value"] for p in pipe.step5_predict(x)["predictions"]
+                  if p["metric"] == code) for x in probes]
+        b = [next(p["value"] for p in prev_pipe.step5_predict(x)["predictions"]
+                  if p["metric"] == code) for x in probes]
+        med_a = sorted(a)[len(a) // 2]
+        med_b = sorted(b)[len(b) // 2]
+        worst = max(worst, abs(med_a - med_b) / METRICS[code]["noise"])
+    return worst
+
+
 def run_canary_gate(pipe, *, prev_pipe=None,
                     caliber: str = "skeleton-abs") -> GateResult:
     """C1–C3（T3 前置）。C1 直接调用 B06 ``run_canary``——单一事实来源。"""
@@ -284,17 +301,7 @@ def run_canary_gate(pipe, *, prev_pipe=None,
         results.append({"rule_id": "C2", "status": "PASS",
                         "detail": "无双版本（首版本），跳过对照"})
     else:
-        probes = [r["x"] for r in (pipe.eval_rows or [])]
-        worst_sigma = 0.0
-        for code in METRICS:
-            a = [next(p["value"] for p in pipe.step5_predict(x)["predictions"]
-                      if p["metric"] == code) for x in probes]
-            b = [next(p["value"] for p in prev_pipe.step5_predict(x)["predictions"]
-                      if p["metric"] == code) for x in probes]
-            med_a = sorted(a)[len(a) // 2]
-            med_b = sorted(b)[len(b) // 2]
-            sigma = METRICS[code]["noise"]
-            worst_sigma = max(worst_sigma, abs(med_a - med_b) / sigma)
+        worst_sigma = median_shift_sigma(pipe, prev_pipe)
         metrics["c2_median_sigma"] = round(worst_sigma, 3)
         if worst_sigma >= THRESHOLDS["c2_median_sigma_mult"]:
             results.append({"rule_id": "C2", "status": "FAIL",

@@ -103,6 +103,9 @@ class SkeletonPipeline:
         self.model_version = None
         self.prev_eval_rmse = None
         self.performed_ids: set[str] = set()
+        # 跨代际固定评估集：排除出训练集的行 id（B09 G2「固定评估集」
+        # 可比性；新一代继承上一代 eval_rows 时同步设置）
+        self.exclude_from_train: set[str] = set()
 
     # ---- 步骤 1：导入 + 阻断级 QC -----------------------------------------
 
@@ -187,7 +190,8 @@ class SkeletonPipeline:
 
     def _training_rows(self) -> list[dict]:
         return [r for r in self.store.where("formula_version")
-                if r.get("measured")]
+                if r.get("measured")
+                and r["id"] not in self.exclude_from_train]
 
     def _split(self, rows: list[dict]) -> tuple[list[dict], list[dict]]:
         """确定性切分：尾部 25% 为评估集（首轮固定后不再变，保证门禁可比）。"""
