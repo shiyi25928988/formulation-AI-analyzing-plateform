@@ -57,11 +57,12 @@ def run_seed(seed: int, mode: str, n_candidates: int, batch_size: int,
     init = surrogate_factory(seed)
     init.fit(X0, y0)
     specs["greedy"] = GreedyStrategy(init)
-    specs["active_ucb"] = UncertaintySamplingStrategy(init, beta=1.0)
+    specs["active_ucb"] = UncertaintySamplingStrategy(init)  # β 默认 0.8
 
     for name, strat in specs.items():
         results[name] = run_replay(mode, history, candidates, strat,
-                                   surrogate_factory, cfg, seed=seed)
+                                   surrogate_factory, cfg, seed=seed,
+                                   init_X=X0, init_y=y0)
     return results
 
 

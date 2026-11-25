@@ -92,9 +92,11 @@ class BaggedEnsemble:
         self.min_samples_leaf = min_samples_leaf
         self.seed = seed
         self.trees = []
+        self.X_fit: list = []      # 训练输入留存（供采集函数的外推感知探索项使用）
 
     def fit(self, X, y):
         self.trees = []
+        self.X_fit = [list(x) for x in X]
         if not X or len(X) != len(y):
             return self
         for t in range(self.n_trees):

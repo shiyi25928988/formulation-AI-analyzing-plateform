@@ -42,11 +42,16 @@ class ReplayResult:
 
 def run_replay(mode: str, history: list[dict], candidates: list[dict],
                strategy, surrogate_factory, cfg: ReplayConfig,
-               seed: int = 0) -> ReplayResult:
+               seed: int = 0, init_X: list | None = None,
+               init_y: list | None = None) -> ReplayResult:
     rng = random.Random(seed)
     by_id = {c["id"]: c for c in candidates}
     performed: set[str] = set()
-    X, y = [], []            # 已揭示的训练集
+    # T0 可见数据 = 冻结历史 + 回放中新揭示的标签（§17.2 步骤 2 口径）。
+    # 此前每轮重训只累积新揭示点、把冷启动历史丢弃——模型质量与 novelty
+    # 参照系在首次重训后坍缩（R2 验收保留项 1 复检时发现的框架 bug）。
+    X: list = list(init_X or [])
+    y: list = list(init_y or [])
     best = -float("inf")
     curve: list[float] = []
     rounds_used = 0.0
