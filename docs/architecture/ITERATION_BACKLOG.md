@@ -54,7 +54,7 @@
 | B06 | 语义断言 + 金丝雀配方集实现 | P1 | 防 §16.2 静默失败，成本最低的可信度投入 | B01、B04 | R2.4 已落地 |
 | B07 | 版本化特征工厂 + Feature Store 最小实现 | P1 | 落实 ADR-04，防止 training-serving skew | B01、B04 | R2.5 已落地 |
 | B08 | 前端信息架构与页面原型（配方工作台 / Pareto 图 / 实验台） | P1 | 让工程师能实际采纳推荐；降级提示需按 §16.3 设计 | B04 | 待办 |
-| B09 | 训练 → 门禁 → 注册 → 灰度流水线详设与模型卡模板 | P2 | 把 §5.5 门禁变成可运行流水线 | B07 | 详设 + 实现轮三件全落（store/gates → 编排 pipeline → 模型卡渲染，lifecycle 41 项测试全过，auto_fill_ratio 0.8947）；剩 migration 002 触发器 |
+| B09 | 训练 → 门禁 → 注册 → 灰度流水线详设与模型卡模板 | P2 | 把 §5.5 门禁变成可运行流水线 | B07 | **收口**：详设 + 实现轮三件（store/gates → 编排 pipeline → 模型卡渲染）+ migration 002 触发器全落；DoD 1 实测 0.8947、DoD 2 镜像断言机械绑定、DoD 3 C1 引用 B06 验证 |
 | B10 | 数据分级 × 角色权限矩阵细表 + RLS 策略测试 | P2 | 落地 §8.2、§18.3；覆盖离线训练链路 | B01 | 待办 |
 | B11 | 气隙离线包、升级与三层回滚演练脚本 | P2 | 私有化交付的关键能力，避免远程救场 | B09 | 待办 |
 | B12 | 白皮书章节改写（能力全景 / 方法论与交付保障 / 案例） | P2 | 对外输出；重点取用 §16.2、§17.2 | 客户基线确认 | 待办 |
@@ -81,6 +81,7 @@
 | R2.6 | 2026-11-24 | B09 详设（第一件）：训练→门禁→注册→灰度流水线 + 模型卡模板（`docs/design/B09-PIPELINE-DETAIL-DESIGN.md`） | 状态机裁定以 DDL `model_stage` 枚举为唯一权威（backlog 草稿 trained/gate_pending 不入 registry，门禁失败=不入册 + ModelGateFailed 留痕）；六条迁移白名单含守卫/事件/失败处置，回滚语义=路由回切非状态迁移（允许同 type 双 production 并行）；G0–G5 注册门禁短路求值 + C1–C3 canary 门禁（C1 直接调用 B06 run_canary，DoD 3）；骨架双口径门禁阈值如实记录；模型卡 8 节模板 + 字段级填充来源表（6/8 组全自动 ≈83% 字段，DoD 1 口径达成）；契约扩展清单 6 事件 + 4 API + 迁移白名单触发器（实现轮补录） | `72da194` |
 | R2.6b | 2026-11-24 | B09 实现轮（第一件）：`lifecycle/` 生命周期 store + 门禁引擎 | `ModelLifecycleStore`：五态状态机 + 六条迁移白名单 T0–T5，`_check`/`_apply` 分离（守卫先于状态变更，防半迁移），门禁失败=不入册 + `ModelGateFailed`，T0 以 gate_report 全过才入册，manual-retire 强制 approver，rollback 无可用 peer 拒绝；`run_register_gate`（G0–G5 短路求值）+ `run_canary_gate`（C1 单一来源调 B06，C2 双版本中位偏差 σ 计 + 分布突变阻断）；`THRESHOLDS` 双口径常量集中（production-rel ≤2% vs skeleton-abs ≤0.5×噪声）；门禁结果落契约 gate_report 结构（逐项 detail 留痕）；骨架 emit 兼容扩展 `aggregate_id`（幂等键四元组，以 model_version 聚合）；lifecycle 24 + skeleton 21 + contracts 18 项测试全过 | `62e8cc6`、`817da34` |
 | R2.6c | 2026-11-25 | B09 实现轮（第二、三件）：编排 pipeline + 模型卡渲染 | `LifecyclePipeline` 编排器：训练→G0–G5→T0 注册→T1 影子（观察量 ≥30 节拍，不足不推进）→T2 灰度（阶梯 5%→25%→100% 替身 + 影子对拍分布稳定）→C1–C3→T3 晋级→rollback 路由回切；门禁失败统一走状态机（`ModelGateFailed` + 短路 SKIPPED 留痕，编排层不绕过）；`median_shift_sigma()` 抽出供 C2/T2 共用（单一事实来源）；骨架加 `exclude_from_train`（新一代继承固定评估集并排除出训练集，§3.1 G2 跨代可比）；晋级后 metrics_json 合并落 rmse/caliber/canary/canary_gate（下一代 G2 基线 + 模型卡证据）；`render_model_card`：8 节模板 + 字段级 auto/semi 统计（实测 auto_fill_ratio 0.8947 ≥0.80，DoD 1 达成），渲染只读，§5 对拍注记单一来源；一页汇报与样例卡落档；回归 119 项全过（lifecycle 41 + skeleton 21 + canary 16 + features 13 + replay 10 + contracts 18） | `e8743da`、`13d7b8b` |
+| R2.6d | 2026-11-25 | B09 收尾：migration 002 `model_registry` 迁移白名单触发器 | `002_model_stage_guard.sql` + 回滚脚本（与 `experiment_transition_guard` 同构；INSERT 从 registered 起步；白名单不含回退迁移，回滚=路由回切；双 production 并行数守卫在服务层）；**DoD 2 机械绑定**：镜像断言（002 SQL 白名单 == `ALLOWED_TRANSITIONS`）入 `test_lifecycle.py`，事务平衡静态校验随断言固化；B09 三项 DoD 全部达成（1 模型卡 0.8947、2 白名单镜像、3 金丝雀门禁）；lifecycle 42 项测试全过 | `{code_hash}`、`{docs_hash}` |
 
 **R1 具体完成**：4+1 视图矩阵与进程/开发/场景视图；超时预算与三条关键时序；10 项 FMEA 与 AI 静默失败防护；四级降级、事件目录与强弱一致边界；离线回放验证方法、故障注入与 go/no-go 检查单；代码依赖方向、walking skeleton、RLS 落地、扩展-收缩迁移、fitness function、RACI。**未改变** v2.0 的任何架构立场与 MVP 范围。
 

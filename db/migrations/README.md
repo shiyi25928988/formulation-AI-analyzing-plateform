@@ -30,6 +30,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f 001_init_schema.down.sql
 
 **状态**：2026-11-24 通过静态机械校验（事务平衡、创建顺序拓扑检查、RLS 全覆盖、枚举口径比对）；Docker 执行验证待有 Docker/PG 环境时补跑，见 ITERATION_BACKLOG B01 备注。
 
+**002（2026-11-25）**：`model_registry` 迁移白名单触发器（B09 §2.3，与 `experiment_transition_guard` 同构）。白名单与 `lifecycle/store.py ALLOWED_TRANSITIONS` 由 `lifecycle/test_lifecycle.py` 镜像断言机械绑定（DoD 2）；INSERT 必须从 `registered` 起步（门禁失败=不入册）；回滚=路由回切非状态迁移，白名单不含任何回退迁移；双 production 并行数守卫在服务层（行级触发器不约束跨行数量）。
+
 ## 表清单（001）
 
 核心：`tenant` `project` `material` `material_batch` `formula` `formula_version`(append-only) `formula_component` `process_condition` `metric_definition` `doe_design` `experiment`(状态机触发器) `test_result` `quality_rule` `prediction_log` `feature_set` `dataset_snapshot` `model_registry` `recommendation` `calib_stat`(F1 物化) `lineage_edge` `audit_event`(分区 append-only)。

@@ -187,7 +187,7 @@ B03 步骤 8 的门禁用了「漂移 ≤ 0.5×噪声底噪」绝对容忍带（
 
 ## 6. 事件与契约扩展清单（实现轮补录）
 
-> **补录状态（2026-11-24）**：6 事件与 4 API 已入 `packages/contracts/`（catalog 19 事件 / payload $defs 19 / model-lifecycle-svc 9 paths），校验器 PASS + 18 项契约测试全过。DDL 迁移白名单触发器（migration 002）仍在实现轮范围。
+> **补录状态（2026-11-25 更新）**：6 事件与 4 API 已入 `packages/contracts/`（catalog 19 事件 / payload $defs 19 / model-lifecycle-svc 9 paths），校验器 PASS + 18 项契约测试全过；DDL 迁移白名单触发器已落档 `db/migrations/002_model_stage_guard.sql`（与代码白名单由镜像断言机械绑定）。
 
 | 项 | 类型 | 说明 |
 |---|---|---|

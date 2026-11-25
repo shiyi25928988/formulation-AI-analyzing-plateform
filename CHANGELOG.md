@@ -5,6 +5,18 @@
 
 ---
 
+## [R2.6d 收尾 · B09 migration 002] · 2026-11-25
+
+**主题**：B09 收口——`model_registry` 迁移白名单触发器（详设 §6 清单最后一项）。
+
+- `db/migrations/002_model_stage_guard.sql` + 回滚脚本：五条迁移白名单 T0–T5 与 `experiment_transition_guard` 同构；INSERT 必须从 `registered` 起步（门禁失败=不入册，无表外脏状态）；回滚=路由回切非状态迁移，白名单不含回退迁移；双 production 并行数守卫在服务层（行级触发器不约束跨行数量）
+- **DoD 2 机械绑定**：`lifecycle/test_lifecycle.py` 新增镜像断言——002 SQL 白名单 == `ALLOWED_TRANSITIONS`，改动任何一侧必须同批同步
+- 静态机械校验（事务平衡）随断言固化；Docker 执行验证沿用 001 待办口径
+- B09 全部 DoD 达成：1 模型卡 0.8947 ≥0.80、2 白名单镜像 DDL、3 金丝雀作为 canary 门禁
+- 回归：lifecycle 42 项全过
+
+---
+
 ## [R2.6c 交付 · B09 编排 pipeline + 模型卡] · 2026-11-25
 
 **主题**：B09 实现轮第二、三件——`LifecyclePipeline` 编排器把训练→门禁→注册→影子→灰度→晋级→回滚串成可执行流水线；模型卡渲染达成 DoD 1。一页汇报见 [`B09-ORCHESTRATION-REPORT.md`](docs/architecture/B09-ORCHESTRATION-REPORT.md)，样例卡见 [`B09-MODEL-CARD-SAMPLE.md`](docs/architecture/B09-MODEL-CARD-SAMPLE.md)。
