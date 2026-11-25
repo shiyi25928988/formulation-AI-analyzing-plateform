@@ -82,6 +82,7 @@
 | R2.6b | 2026-11-24 | B09 实现轮（第一件）：`lifecycle/` 生命周期 store + 门禁引擎 | `ModelLifecycleStore`：五态状态机 + 六条迁移白名单 T0–T5，`_check`/`_apply` 分离（守卫先于状态变更，防半迁移），门禁失败=不入册 + `ModelGateFailed`，T0 以 gate_report 全过才入册，manual-retire 强制 approver，rollback 无可用 peer 拒绝；`run_register_gate`（G0–G5 短路求值）+ `run_canary_gate`（C1 单一来源调 B06，C2 双版本中位偏差 σ 计 + 分布突变阻断）；`THRESHOLDS` 双口径常量集中（production-rel ≤2% vs skeleton-abs ≤0.5×噪声）；门禁结果落契约 gate_report 结构（逐项 detail 留痕）；骨架 emit 兼容扩展 `aggregate_id`（幂等键四元组，以 model_version 聚合）；lifecycle 24 + skeleton 21 + contracts 18 项测试全过 | `62e8cc6`、`817da34` |
 | R2.6c | 2026-11-25 | B09 实现轮（第二、三件）：编排 pipeline + 模型卡渲染 | `LifecyclePipeline` 编排器：训练→G0–G5→T0 注册→T1 影子（观察量 ≥30 节拍，不足不推进）→T2 灰度（阶梯 5%→25%→100% 替身 + 影子对拍分布稳定）→C1–C3→T3 晋级→rollback 路由回切；门禁失败统一走状态机（`ModelGateFailed` + 短路 SKIPPED 留痕，编排层不绕过）；`median_shift_sigma()` 抽出供 C2/T2 共用（单一事实来源）；骨架加 `exclude_from_train`（新一代继承固定评估集并排除出训练集，§3.1 G2 跨代可比）；晋级后 metrics_json 合并落 rmse/caliber/canary/canary_gate（下一代 G2 基线 + 模型卡证据）；`render_model_card`：8 节模板 + 字段级 auto/semi 统计（实测 auto_fill_ratio 0.8947 ≥0.80，DoD 1 达成），渲染只读，§5 对拍注记单一来源；一页汇报与样例卡落档；回归 119 项全过（lifecycle 41 + skeleton 21 + canary 16 + features 13 + replay 10 + contracts 18） | `e8743da`、`13d7b8b` |
 | R2.6d | 2026-11-25 | B09 收尾：migration 002 `model_registry` 迁移白名单触发器 | `002_model_stage_guard.sql` + 回滚脚本（与 `experiment_transition_guard` 同构；INSERT 从 registered 起步；白名单不含回退迁移，回滚=路由回切；双 production 并行数守卫在服务层）；**DoD 2 机械绑定**：镜像断言（002 SQL 白名单 == `ALLOWED_TRANSITIONS`）入 `test_lifecycle.py`，事务平衡静态校验随断言固化；B09 三项 DoD 全部达成（1 模型卡 0.8947、2 白名单镜像、3 金丝雀门禁）；lifecycle 42 项测试全过 | `60a43d9`、`3748bd1` |
+| R2.7 | 2026-11-25 | R2 阶段性验收汇总（`docs/architecture/R2-ACCEPTANCE-SUMMARY.md`） | 范围 R2.1–R2.6d（28 提交）；验收结论**通过（有保留项）**：7 项 backlog 落地（P0 全清）、全量回归 120 项全过、架构立场与数据红线零违例；交付全景（R2 代码增量 40 文件 / +6136 行）+ 六项可对外引用证据 + ADR 执行对照；六项保留项如实记录（greedy 未过、Docker 验证待跑、CI 未接、骨架 step8 未改造、替身口径清单、双 schema 暂存）；R3 主矛盾建议 B05 | `{docs_hash}` |
 
 **R1 具体完成**：4+1 视图矩阵与进程/开发/场景视图；超时预算与三条关键时序；10 项 FMEA 与 AI 静默失败防护；四级降级、事件目录与强弱一致边界；离线回放验证方法、故障注入与 go/no-go 检查单；代码依赖方向、walking skeleton、RLS 落地、扩展-收缩迁移、fitness function、RACI。**未改变** v2.0 的任何架构立场与 MVP 范围。
 
@@ -89,16 +90,16 @@
 
 ---
 
-## 6. 下一轮（R2.6）建议
+## 6. 下一轮（R3）建议
 
-**单一主矛盾**：特征单一来源（B07）已落地，剩余主矛盾是「训练→门禁→注册→灰度流水线」——模型从训练完成到可服务的晋升路径目前只存在于文档（§5.5）与骨架的简化步骤 8，B09 把它变成可运行的流水线定义与模型卡模板。
+> R2 验收汇总（R2.7）已完成，主矛盾判断随之更新——见 `docs/architecture/R2-ACCEPTANCE-SUMMARY.md` §7。
 
-**B09 训练 → 门禁 → 注册 → 灰度流水线详设 + 模型卡模板**（依赖 B07 已满足）：把 §5.5 门禁（覆盖率、违规率、RMSE 漂移）扩展为可执行检查序列 + model_registry 状态机（trained → gate_pending → shadow → canary → promoted / rejected），模型卡模板按 §8.4 溯源链字段落 Markdown 模板。
+**单一主矛盾**：R2 已把「验证能力 + 核心链路」建完，平台对外的短板从可信度证据转为**可用性**——真实数据进不来（B05 数据导入 + QC 阻断级规则引擎是一期真正瓶颈，决定可用样本量）、工程师用不上（B08 前端工作台）。建议 R3 以 **B05** 为单一主矛盾（P1，依赖 B01 已满足）。
 
-**备选**：B08 契约测试接入 CI（四套件 + 校验器已齐，剩流水线编排，等 CI 环境就绪）；B05 前端技术栈选型。
+**备选**：B08 契约测试接入 CI（四套件 + 校验器已齐，剩流水线编排，等 CI 环境就绪）；B10 权限矩阵细表（与 B05 数据面同批推进可共享夹具）。
 
-验收（DoD）：模型卡模板可由骨架管线自动填充 ≥80% 字段；状态机白名单镜像 DDL；金丝雀（B06）作为 canary 阶段的门禁被引用。
+验收（DoD，B05）：导入链路 QC 阻断级规则可配置可测试；阻断/放行/负样本库三路处置与 §7.1、九态状态机对齐；与骨架步骤 1 替身完成替换收口。
 
-**R2 全程不做**：真实数据接入、多租户管理 UI、LIMS 对接、知识图谱、生成模型、GNN、私有 LLM。
+**R2 全程不做（延续至 R3）**：真实数据接入测试环境、多租户管理 UI、LIMS 对接、知识图谱、生成模型、GNN、私有 LLM。
 
 > 幸存者偏差诊断已随 B02 落地（附录 B.1，依据见 §17.2）：回放前先核查历史序列 `failed / cancelled` 占比与原因完整度，再选全量 / 保守两档；保守模式报告自动标注，轮次下降数字不得对外引用。
